@@ -1,8 +1,10 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from map_locations import MapLocations
 from map_label import MapLabel
+from world import World
+from new_map_menu import NewMapMenu
 import constants as c
 
 
@@ -37,22 +39,17 @@ class Main(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle("Map creator")
 
+        self.world: World = World(Main.LENGTH_DIVISION)
+        self.new_map_menu: NewMapMenu = None
+        self.timer: self.timer = QTimer()
+
         self.new_action = QtWidgets.QAction("New map", self)
-        self.save_action = QtWidgets.QAction("Save as image", self)
+        self.export_action = QtWidgets.QAction("Export", self)
         self.quit_action = QtWidgets.QAction("Quit", self)
-        self.quit_action.triggered.connect(self.close)
         self.grid_view_action = QtWidgets.QAction("View grid", self)
-        self.grid_view_action.setCheckable(True)
-        self.grid_view_action.setChecked(True)
-        self.grid_view_action.triggered.connect(self.repaint_grid)
         self.line_view_action = QtWidgets.QAction("View lines", self)
-        self.line_view_action.setCheckable(True)
-        self.line_view_action.setChecked(True)
-        self.line_view_action.triggered.connect(self.repaint_grid)
         self.label_view_action = QtWidgets.QAction("View locations", self)
-        self.label_view_action.setCheckable(True)
-        self.label_view_action.setChecked(True)
-        self.label_view_action.triggered.connect(self.paint)
+        self._create_actions()
 
         self.file_menu = QtWidgets.QMenu("File", self)
         self.view_menu = QtWidgets.QMenu("View", self)
@@ -69,9 +66,9 @@ class Main(QtWidgets.QMainWindow):
         self.map_screen = QtWidgets.QLabel()
         self.map_screen.installEventFilter(self)
 
-        self.map = QtGui.QPixmap(800, 800)
-        self.grid_map = QtGui.QPixmap(800, 800)
-        self.label_map = QtGui.QPixmap(800, 800)
+        self.map = QtGui.QPixmap(Main.MAP_LENGTH, Main.MAP_HEIGHT)
+        self.grid_map = QtGui.QPixmap(Main.MAP_LENGTH, Main.MAP_HEIGHT)
+        self.label_map = QtGui.QPixmap(Main.MAP_LENGTH, Main.MAP_HEIGHT)
 
         self.map.fill(c.get_color(c.WATER))
         self.grid_map.fill(c.EMPTY_COLOR)
@@ -113,12 +110,51 @@ class Main(QtWidgets.QMainWindow):
         menu_bar = self.menuBar()
         menu_bar.addMenu(self.file_menu)
         self.file_menu.addAction(self.new_action)
-        self.file_menu.addAction(self.save_action)
+        self.file_menu.addAction(self.export_action)
         self.file_menu.addAction(self.quit_action)
         menu_bar.addMenu(self.view_menu)
         self.view_menu.addAction(self.grid_view_action)
         self.view_menu.addAction(self.line_view_action)
         self.view_menu.addAction(self.label_view_action)
+
+    def _create_actions(self):
+        self.new_action.triggered.connect(self.new_map)
+        self.export_action.triggered.connect(self.export)
+        self.quit_action.triggered.connect(self.close)
+
+        self.grid_view_action.setCheckable(True)
+        self.grid_view_action.setChecked(True)
+        self.grid_view_action.triggered.connect(self.repaint_grid)
+
+        self.line_view_action.setCheckable(True)
+        self.line_view_action.setChecked(True)
+        self.line_view_action.triggered.connect(self.repaint_grid)
+
+        self.label_view_action.setCheckable(True)
+        self.label_view_action.setChecked(True)
+        self.label_view_action.triggered.connect(self.paint)
+
+    def paint_expansion(self) -> None:
+        """Paints areas. Unclaimed cells are painted black"""
+        painter = QtGui.QPainter(self.map_screen.pixmap())
+        pen = QtGui.QPen()
+        painter.fillRect(0, 0, Main.MAP_LENGTH, Main.MAP_HEIGHT, Qt.black)
+        pen.setWidth(2)
+
+        for area in self.world.areas:
+            pen.setColor(Main.AREA_COLORS[area.id * 2])
+            painter.setPen(pen)
+
+            for cell in area.claimed_cells:
+                painter.drawPoint(cell.x * 2, cell.y * 2)
+
+            pen.setColor(Main.AREA_COLORS[area.id * 2 + 1])
+            painter.setPen(pen)
+
+            for cell in area.queued_cells:
+                painter.drawPoint(cell.x * 2, cell.y * 2)
+        painter.end()
+        self.update()
 
     def paint_grid(self, draw_grid: bool = True, draw_lines: bool = True) -> None:
         """Draws a grid"""
@@ -199,6 +235,50 @@ class Main(QtWidgets.QMainWindow):
             self.paint_grid(self.grid_view_action.isChecked(),
                             self.line_view_action.isChecked())
         self.paint()
+
+    def export(self):
+        name = QtWidgets.QFileDialog.getSaveFileName(self, caption="Save image",
+                                                     filter=".png", initialFilter=".png")
+        self.map_screen.pixmap().save(name[0] + name[1])
+
+    def new_map(self):
+        self.new_map_menu: NewMapMenu = NewMapMenu(self)
+        self.new_map_menu.show()
+
+    def expand_areas(self):
+        """Expands area by one growth step and paints the progress.
+        When finished, generates land and paints the map"""
+        if self.world.expand_areas():
+            self.world.create_land()
+            self.paint()
+        else:
+            self.paint_expansion()
+            self.timer.singleShot(100, self.expand_areas)
+
+    def generate_map(self):
+        self.new_map_menu.generate_button.setText("Generating...")
+        self.new_map_menu.generate_button.setEnabled(False)
+
+        if self.new_map_menu.algorithm.currentText() == "Fixed growth":
+            fixed_growth = True
+        else:
+            fixed_growth = False
+
+        self.world.create_areas(total_amount=self.new_map_menu.regions_total.value(),
+                                land_amount=self.new_map_menu.land_regions.value(),
+                                sea_amount=self.new_map_menu.sea_regions.value(),
+                                sea_margin=self.new_map_menu.sea_margin.value(),
+                                fixed_growth=fixed_growth)
+
+        if self.new_map_menu.visualize_check.isChecked():
+            self.timer.singleShot(100, self.expand_areas)
+        else:
+            # This might take a while. Add a progress bar.
+            self.world.build_areas()
+            self.world.create_land()
+            self.new_map_menu.close()
+            self.new_map_menu = None
+            self.paint()
 
 
 if __name__ == "__main__":
