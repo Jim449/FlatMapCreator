@@ -5,6 +5,7 @@ from map_locations import MapLocations
 from map_label import MapLabel
 from world import World
 from new_map_menu import NewMapMenu
+from grid import Grid
 import constants as c
 
 
@@ -156,16 +157,44 @@ class Main(QtWidgets.QMainWindow):
         painter.end()
         self.update()
 
+    def paint_world(self, grid: Grid, draw_areas: bool = False) -> None:
+        """Paints the terrain in the grid"""
+        painter = QtGui.QPainter(self.map)
+        pen = QtGui.QPen()
+        pen.setWidth(1)
+
+        for cell in grid:
+            pen.setColor(c.get_color(cell.terrain))
+            painter.setPen(pen)
+            painter.drawPoint(cell.x * 2, cell.y * 2)
+
+            if draw_areas:
+                pen.setColor(c.BORDER_COLOR)
+                painter.setPen(pen)
+
+                if cell.east_boundary or cell.south_boundary:
+                    painter.drawPoint(cell.x * 2, cell.y * 2)
+
+        painter.end()
+
     def paint_grid(self, draw_grid: bool = True, draw_lines: bool = True) -> None:
         """Draws a grid"""
+
+        # TODO I get both grid and lines even if only draw_lines is True?
+        # I am calling the method with the right arguments
+        # I'm entering the right if-statements
+        # Method is called properly
+        # The bug is not apparent
+
         painter = QtGui.QPainter(self.grid_map)
         pen = QtGui.QPen()
-        pen.setColor(c.GRID_COLOR)
-        painter.setPen(pen)
         painter.fillRect(0, 0, Main.MAP_LENGTH,
-                         Main.MAP_HEIGHT, c.get_color(c.WATER))
+                         Main.MAP_HEIGHT, c.EMPTY_COLOR)
 
         if draw_grid:
+            pen.setColor(c.GRID_COLOR)
+            painter.setPen(pen)
+
             for x in range(0, Main.MAP_LENGTH, Main.GRID_SIZE):
                 painter.drawLine(x, 0, x, Main.MAP_HEIGHT)
 
@@ -219,6 +248,9 @@ class Main(QtWidgets.QMainWindow):
         return result
 
     def paint(self) -> None:
+        # Wonder if I'm manipulating the map in a way that saves grids?
+        # That wouldn't explain the inconsistencies
+        # No, join_maps returns a new map
         result = self.map
 
         if self.grid_view_action.isChecked() or self.line_view_action.isChecked():
@@ -231,9 +263,8 @@ class Main(QtWidgets.QMainWindow):
         self.update()
 
     def repaint_grid(self):
-        if self.grid_view_action.isChecked() or self.line_view_action.isChecked():
-            self.paint_grid(self.grid_view_action.isChecked(),
-                            self.line_view_action.isChecked())
+        self.paint_grid(self.grid_view_action.isChecked(),
+                        self.line_view_action.isChecked())
         self.paint()
 
     def export(self):
@@ -245,17 +276,25 @@ class Main(QtWidgets.QMainWindow):
         self.new_map_menu: NewMapMenu = NewMapMenu(self)
         self.new_map_menu.show()
 
+    def finish_map_generation(self):
+        self.world.create_land()
+        self.world.find_boundaries(self.world.square_miles)
+        self.new_map_menu.close()
+        self.new_map_menu = None
+        self.paint_world(self.world.square_miles, draw_areas=True)
+        self.paint()
+
     def expand_areas(self):
         """Expands area by one growth step and paints the progress.
         When finished, generates land and paints the map"""
         if self.world.expand_areas():
-            self.world.create_land()
-            self.paint()
+            self.finish_map_generation()
         else:
             self.paint_expansion()
             self.timer.singleShot(100, self.expand_areas)
 
     def generate_map(self):
+        self.world = World(Main.LENGTH_DIVISION)
         self.new_map_menu.generate_button.setText("Generating...")
         self.new_map_menu.generate_button.setEnabled(False)
 
@@ -273,12 +312,8 @@ class Main(QtWidgets.QMainWindow):
         if self.new_map_menu.visualize_check.isChecked():
             self.timer.singleShot(100, self.expand_areas)
         else:
-            # This might take a while. Add a progress bar.
             self.world.build_areas()
-            self.world.create_land()
-            self.new_map_menu.close()
-            self.new_map_menu = None
-            self.paint()
+            self.finish_map_generation()
 
 
 if __name__ == "__main__":

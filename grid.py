@@ -6,8 +6,8 @@ class Grid():
         self.content: dict[tuple, Cell] = {}
         self.length = length
         self.height = height
-        self.values = None
-        self.index: int = 0
+        self.ix: int = 0
+        self.iy: int = 0
 
         for x in range(length):
             for y in range(height):
@@ -81,14 +81,18 @@ class Grid():
                 result.append(cell)
 
     def __iter__(self):
-        self.values = self.content.values()
-        self.index = 0
+        self.ix = 0
+        self.iy = 0
         return self
 
-    def __next__(self):
-        try:
-            item = self.values[self.index]
-            self.index += 1
-            return item
-        except IndexError:
-            raise StopIteration
+    def __next__(self) -> Cell:
+        if self.ix == self.length:
+            self.ix = 0
+
+            if self.iy == self.height - 1:
+                raise StopIteration
+            else:
+                self.iy += 1
+        item = self.get(self.ix, self.iy)
+        self.ix += 1
+        return item

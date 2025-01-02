@@ -71,3 +71,26 @@ class World():
         """Creates land and water on all areas"""
         for area in self.areas:
             area.create_land()
+
+    def find_boundaries(self, grid: Grid):
+        for y in range(1, grid.height):
+            cell = grid.get(0, y)
+
+            for x in range(1, grid.length):
+                previous = cell
+                cell = grid.get(x, y)
+
+                if previous.area != cell.area:
+                    previous.east_boundary = True
+                    cell.west_boundary = True
+
+        for x in range(grid.length):
+            cell = grid.get(x, 0)
+
+            for y in range(grid.height):
+                previous = cell
+                cell = grid.get(x, y)
+
+                if previous.area != cell.area:
+                    previous.south_boundary = True
+                    cell.north_boundary = True

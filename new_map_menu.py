@@ -58,7 +58,7 @@ class NewMapMenu(QtWidgets.QFrame):
         self.layout.addWidget(self.sea_margin)
 
         self.visualize_check = QtWidgets.QCheckBox("Visualize area expansion")
-        self.visualize_check.setChecked(True)
+        self.visualize_check.setChecked(False)
         self.layout.addWidget(self.visualize_check)
 
         self.generate_button = QtWidgets.QPushButton("Generate map")

@@ -66,16 +66,8 @@ class Area():
         based on claiming the cell at (x, y)"""
 
         # Find the x-value when y = 0 and use that as key for diagonal distance
-
-        # TODO I need to rework this now that wrapping around the world isn't a thing
-        # For ascending key, subtract by y to get x when y = 0
-        # x can become negative. I just have to remove the modulo
-        # For descending key, add by y to get x where y = 0
-        # x can become greater than grid.length. Remove the modulo
-        # Fix the scans so that they start at x = 0 and end with x = length - 1
-
-        asc_key = (x - y) % self.grid.length
-        des_key = (x + y) % self.grid.length
+        asc_key = x - y
+        des_key = x + y
 
         self._add_or_set(self.ascending_distance, asc_key)
         self._add_or_set(self.descending_distance, des_key)
@@ -252,11 +244,17 @@ class Area():
             first_skip = int(length * northwest_margin)
             second_skip = int(length * southeast_margin)
             include = length - first_skip - second_skip
-            y = 0
 
-            for x in range(start_x, start_x + self.grid.length):
+            if start_x < 0:
+                y = - start_x
+                start_x = 0
+            else:
+                y = 0
 
-                if self.grid.get(x, y).area == self.id:
+            for x in range(start_x, self.grid.length):
+                if y == self.grid.height:
+                    break
+                elif self.grid.get(x, y).area == self.id:
                     if first_skip > 0:
                         first_skip -= 1
                     elif include > 0:
@@ -282,10 +280,16 @@ class Area():
             first_skip = int(length * northeast_margin)
             second_skip = int(length * southwest_margin)
             include = length - first_skip - second_skip
-            y = 0
 
-            for x in range(start_x, start_x - self.grid.length, -1):
+            if start_x >= self.grid.length:
+                y = start_x - self.grid.length + 1
+                start_x = self.grid.length - 1
+            else:
+                y = 0
 
+            for x in range(start_x, -1, -1):
+                if y == self.grid.height:
+                    break
                 if self.grid.get(x, y).area == self.id:
                     if first_skip > 0:
                         first_skip -= 1
@@ -294,7 +298,7 @@ class Area():
                         include -= 1
                     else:
                         break
-                row += 1
+                y += 1
 
     def create_land(self) -> None:
         """Creates land or sea on this area, depending on area type"""
