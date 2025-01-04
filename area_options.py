@@ -40,6 +40,16 @@ class AreaOptions(QtWidgets.QFrame):
         self.sea_margin.setValue(0.20)
         self.layout.addWidget(self.sea_margin)
 
+        self.coastal_label = QtWidgets.QLabel("Coastal water rate")
+        self.layout.addWidget(self.coastal_label)
+
+        self.coastal_rate = QtWidgets.QDoubleSpinBox()
+        self.coastal_rate.setMinimum(0.05)
+        self.coastal_rate.setMaximum(0.95)
+        self.coastal_rate.setSingleStep(0.05)
+        self.coastal_rate.setValue(0.50)
+        self.layout.addWidget(self.coastal_rate)
+
         self.add_button = QtWidgets.QPushButton("Add type")
         self.add_button.clicked.connect(main.add_area_type)
         self.layout.addWidget(self.add_button)
@@ -47,6 +57,10 @@ class AreaOptions(QtWidgets.QFrame):
         self.set_button = QtWidgets.QPushButton("Set type")
         self.set_button.clicked.connect(main.set_area_type)
         self.layout.addWidget(self.set_button)
+
+        self.coastal_button = QtWidgets.QPushButton("Add coastal landscape")
+        self.coastal_button.clicked.connect(main.add_coastal_landscape)
+        self.layout.addWidget(self.coastal_button)
 
         self.mountain_label = QtWidgets.QLabel("Mountain ranges")
         self.layout.addWidget(self.mountain_label)
@@ -90,6 +104,7 @@ class AreaOptions(QtWidgets.QFrame):
     def enable_buttons(self, flag: bool) -> None:
         self.set_button.setEnabled(flag)
         self.add_button.setEnabled(flag)
+        self.coastal_button.setEnabled(flag)
         self.land_mountain.setEnabled(flag)
         self.sea_mountain.setEnabled(flag)
         self.erase_mountain.setEnabled(flag)

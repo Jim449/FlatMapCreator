@@ -166,16 +166,16 @@ class Area():
             limit -= 1
         return self.currency
 
-    def _horizontal_land_scan(self) -> None:
+    def _horizontal_land_scan(self, type: int, sea_margin: float, coastal_scan: bool = False) -> None:
         """Scans the area horizontally, finding valid land positions on each vertical"""
-        if self.type in (c.WEST, c.CENTER, c.EAST):
-            north_margin = self.sea_margin
-            south_margin = self.sea_margin
-        elif self.type in (c.NORTHWEST, c.NORTH, c.NORTHEAST):
+        if type in (c.WEST, c.CENTER, c.EAST):
+            north_margin = sea_margin
+            south_margin = sea_margin
+        elif type in (c.NORTHWEST, c.NORTH, c.NORTHEAST):
             north_margin = 0
-            south_margin = self.sea_margin * 2
-        elif self.type in (c.SOUTHWEST, c.SOUTH, c.SOUTHEAST):
-            north_margin = self.sea_margin * 2
+            south_margin = sea_margin * 2
+        elif type in (c.SOUTHWEST, c.SOUTH, c.SOUTHEAST):
+            north_margin = sea_margin * 2
             south_margin = 0
 
         for x in self.north_end.keys():
@@ -192,21 +192,24 @@ class Area():
                     if first_skip > 0:
                         first_skip -= 1
                     elif include > 0:
-                        self.grid.get(x, y).horizontal_land_check = True
+                        if coastal_scan:
+                            self.grid.get(x, y).horizontal_coastal_check = True
+                        else:
+                            self.grid.get(x, y).horizontal_land_check = True
                         include -= 1
                     else:
                         break
 
-    def _vertical_land_scan(self) -> None:
+    def _vertical_land_scan(self, type: int, sea_margin: float, coastal_scan: bool = False) -> None:
         """Scans the area vertically, finding valid land positions on each horizontal"""
-        if self.type in (c.NORTH, c.CENTER, c.SOUTH):
-            west_margin = self.sea_margin
-            east_margin = self.sea_margin
-        elif self.type in (c.NORTHWEST, c.WEST, c.SOUTHWEST):
+        if type in (c.NORTH, c.CENTER, c.SOUTH):
+            west_margin = sea_margin
+            east_margin = sea_margin
+        elif type in (c.NORTHWEST, c.WEST, c.SOUTHWEST):
             west_margin = 0
-            east_margin = self.sea_margin * 2
-        elif self.type in (c.NORTHEAST, c.EAST, c.SOUTHEAST):
-            west_margin = self.sea_margin * 2
+            east_margin = sea_margin * 2
+        elif type in (c.NORTHEAST, c.EAST, c.SOUTHEAST):
+            west_margin = sea_margin * 2
             east_margin = 0
 
         for y in self.west_end.keys():
@@ -223,21 +226,24 @@ class Area():
                     if first_skip > 0:
                         first_skip -= 1
                     elif include > 0:
-                        self.grid.get(x, y).vertical_land_check = True
+                        if coastal_scan:
+                            self.grid.get(x, y).vertical_coastal_check = True
+                        else:
+                            self.grid.get(x, y).vertical_land_check = True
                         include -= 1
                     else:
                         break
 
-    def _ascending_land_scan(self) -> None:
+    def _ascending_land_scan(self, type: int, sea_margin: float, coastal_scan: bool = False) -> None:
         """Scans the area diagonally, finding valid land position in northwest to southeast diagonal"""
-        if self.type in (c.NORTH, c.WEST, c.NORTHWEST):
+        if type in (c.NORTH, c.WEST, c.NORTHWEST):
             northwest_margin = 0
-            southeast_margin = self.sea_margin * 2
-        elif self.type in (c.CENTER, c.NORTHEAST, c.SOUTHWEST):
-            northwest_margin = self.sea_margin
-            southeast_margin = self.sea_margin
-        elif self.type in (c.EAST, c.SOUTHEAST, c.SOUTH):
-            northwest_margin = self.sea_margin * 2
+            southeast_margin = sea_margin * 2
+        elif type in (c.CENTER, c.NORTHEAST, c.SOUTHWEST):
+            northwest_margin = sea_margin
+            southeast_margin = sea_margin
+        elif type in (c.EAST, c.SOUTHEAST, c.SOUTH):
+            northwest_margin = sea_margin * 2
             southeast_margin = 0
 
         for start_x, length in self.ascending_distance.items():
@@ -258,22 +264,25 @@ class Area():
                     if first_skip > 0:
                         first_skip -= 1
                     elif include > 0:
-                        self.grid.get(x, y).ascending_land_check = True
+                        if coastal_scan:
+                            self.grid.get(x, y).ascending_coastal_check = True
+                        else:
+                            self.grid.get(x, y).ascending_land_check = True
                         include -= 1
                     else:
                         break
                 y += 1
 
-    def _descending_land_scan(self) -> None:
+    def _descending_land_scan(self, type: int, sea_margin: float, coastal_scan: bool = False) -> None:
         """Scans the area diagonally, finding valid land positions in northeast to southwest diagonal"""
-        if self.type in (c.NORTH, c.NORTHEAST, c.EAST):
+        if type in (c.NORTH, c.NORTHEAST, c.EAST):
             northeast_margin = 0
-            southwest_margin = self.sea_margin * 2
-        elif self.type in (c.CENTER, c.SOUTHEAST, c.NORTHWEST):
-            northeast_margin = self.sea_margin
-            southwest_margin = self.sea_margin
-        elif self.type in (c.SOUTH, c.SOUTHWEST, c.WEST):
-            northeast_margin = self.sea_margin * 2
+            southwest_margin = sea_margin * 2
+        elif type in (c.CENTER, c.SOUTHEAST, c.NORTHWEST):
+            northeast_margin = sea_margin
+            southwest_margin = sea_margin
+        elif type in (c.SOUTH, c.SOUTHWEST, c.WEST):
+            northeast_margin = sea_margin * 2
             southwest_margin = 0
 
         for start_x, length in self.descending_distance.items():
@@ -294,7 +303,10 @@ class Area():
                     if first_skip > 0:
                         first_skip -= 1
                     elif include > 0:
-                        self.grid.get(x, y).descending_land_check = True
+                        if coastal_scan:
+                            self.grid.get(x, y).descending_coastal_check = True
+                        else:
+                            self.grid.get(x, y).descending_land_check = True
                         include -= 1
                     else:
                         break
@@ -317,44 +329,56 @@ class Area():
             if self.type in (
                     c.CENTER, c.NORTHEAST, c.SOUTHEAST,
                     c.SOUTHWEST, c.NORTHWEST):
-                self._horizontal_land_scan()
-                self._vertical_land_scan()
+                self._horizontal_land_scan(self.type, self.sea_margin)
+                self._vertical_land_scan(self.type, self.sea_margin)
             else:
-                self._ascending_land_scan()
-                self._descending_land_scan()
+                self._ascending_land_scan(self.type, self.sea_margin)
+                self._descending_land_scan(self.type, self.sea_margin)
 
             for cell in self.claimed_cells:
-                if (cell.horizontal_land_check and cell.vertical_land_check) \
-                        or (cell.ascending_land_check and cell.descending_land_check):
+                if cell.passes_land_scan():
                     cell.set_terrain(c.LAND)
                     self.land_area += 100
                 else:
                     cell.set_terrain(c.WATER)
                     self.sea_area += 100
 
-            # TODO Try out a shallows check, just for estetics
-            # It basically paints a shadow of where the land would be
-            # had the sea margin been a little lower
-            # It gives this geometrical feel. Can't say I like it
-            # Maybe if I lower it to just 0.02 less than regular sea margin
-            # Better but perhaps not good enough. Try with a shore
-            # self.sea_margin -= 0.02
+    def convert_to_coastal(self, cell: Cell, water_rate: float) -> bool:
+        if c.is_terrain(cell.terrain, c.WATER) or random.random() > water_rate:
+            return False
 
-            # if self.type in (
-            #         c.CENTER, c.NORTHEAST, c.SOUTHEAST,
-            #         c.SOUTHWEST, c.NORTHWEST):
-            #     self._horizontal_land_scan()
-            #     self._vertical_land_scan()
-            # else:
-            #     self._ascending_land_scan()
-            #     self._descending_land_scan()
+        surroundings = c.get_surroundings(cell.x, cell.y)
+        outskirts = self.grid.get_all(surroundings)
 
-            # for cell in self.claimed_cells:
-            #     if cell.terrain == c.LAND:
-            #         continue
-            #     elif (cell.horizontal_land_check and cell.vertical_land_check) \
-            #             or (cell.ascending_land_check and cell.descending_land_check):
-            #         cell.set_terrain(c.SHALLOWS)
+        for neighbor in outskirts:
+            if neighbor != None and c.is_terrain(neighbor.terrain, c.WATER):
+                cell.set_terrain(c.WATER)
+                return True
+        return False
+
+    def create_coastal_landscape(self, type: int,
+                                 coastal_margin: float, water_rate: float) -> None:
+        if type in (c.CENTER, c.NORTHEAST, c.SOUTHEAST,
+                    c.SOUTHWEST, c.NORTHWEST):
+            self._horizontal_land_scan(type, coastal_margin, True)
+            self._vertical_land_scan(type, coastal_margin, True)
+        elif type in (c.NORTH, c.EAST, c.SOUTH, c.WEST):
+            self._ascending_land_scan(type, coastal_margin, True)
+            self._descending_land_scan(type, coastal_margin, True)
+
+        coastal_cells = []
+
+        for cell in self.claimed_cells:
+            if c.is_terrain(cell.terrain, c.WATER) and cell.passes_coastal_scan():
+                cell.set_terrain(c.LAND)
+                coastal_cells.append(cell)
+
+        amount = int(len(coastal_cells) * water_rate)
+
+        while amount > 0:
+            for cell in coastal_cells:
+                if self.convert_to_coastal(cell, water_rate):
+                    amount -= 1
 
     def sink(self) -> None:
         """Clears all land from this plate. Clears land and sea area calculations"""

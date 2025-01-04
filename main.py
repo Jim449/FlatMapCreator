@@ -125,10 +125,6 @@ class Main(QtWidgets.QMainWindow):
         self.locations.add_location(
             MapLabel(350, 650, "Minorplace", 1, "Geography"))
 
-        self.paint_labels(self.locations, importance=3)
-        self.paint_grid()
-        self.paint()
-
         widget = QtWidgets.QWidget()
         widget.setLayout(self.layout)
         self.setCentralWidget(widget)
@@ -151,20 +147,20 @@ class Main(QtWidgets.QMainWindow):
         self.quit_action.triggered.connect(self.close)
 
         self.grid_view_action.setCheckable(True)
-        self.grid_view_action.setChecked(True)
+        self.grid_view_action.setChecked(False)
         self.grid_view_action.triggered.connect(self.repaint_grid)
 
         self.line_view_action.setCheckable(True)
-        self.line_view_action.setChecked(True)
+        self.line_view_action.setChecked(False)
         self.line_view_action.triggered.connect(self.repaint_grid)
 
         self.label_view_action.setCheckable(True)
-        self.label_view_action.setChecked(True)
-        self.label_view_action.triggered.connect(self.paint)
+        self.label_view_action.setChecked(False)
+        self.label_view_action.triggered.connect(self.repaint_locations)
 
         self.area_view_action.setCheckable(True)
-        self.area_view_action.setChecked(True)
-        self.area_view_action.triggered.connect(self.repaint_world)
+        self.area_view_action.setChecked(False)
+        self.area_view_action.triggered.connect(self.repaint_grid)
 
         self.area_action.triggered.connect(self.open_area_options)
         # self.boundary_action
@@ -213,18 +209,19 @@ class Main(QtWidgets.QMainWindow):
             painter.setPen(pen)
             painter.drawPoint(cell.x, cell.y)
 
-            if draw_areas:
-                pen.setColor(c.BORDER_COLOR)
-                painter.setPen(pen)
+            # if draw_areas:
+            #     pen.setColor(c.BORDER_COLOR)
+            #     painter.setPen(pen)
 
-                if cell.east_boundary or cell.south_boundary:
-                    painter.drawPoint(cell.x, cell.y)
+            #     if cell.east_boundary or cell.south_boundary:
+            #         painter.drawPoint(cell.x, cell.y)
 
         painter.end()
         self.map = pixmap.scaled(Main.MAP_LENGTH, Main.MAP_HEIGHT,
                                  transformMode=Qt.TransformationMode.SmoothTransformation)
 
-    def paint_grid(self, draw_grid: bool = True, draw_lines: bool = True) -> None:
+    def paint_grid(self, draw_grid: bool = True, draw_lines: bool = True,
+                   draw_areas: bool = False, grid: Grid = None) -> None:
         """Draws a grid"""
 
         # This works. FillRect won't clear the old lines properly
@@ -252,6 +249,14 @@ class Main(QtWidgets.QMainWindow):
 
             for y in range(0, Main.MAP_HEIGHT, Main.GRID_SIZE * 10):
                 painter.drawLine(0, y, Main.MAP_LENGTH, y)
+
+        if draw_areas:
+            pen.setColor(c.BORDER_COLOR)
+            painter.setPen(pen)
+
+            for cell in grid:
+                if cell.has_boundary():
+                    painter.drawPoint(cell.x * 2, cell.y * 2)
         painter.end()
 
     def paint_labels(self, locations: MapLocations, importance: int) -> None:
@@ -292,7 +297,8 @@ class Main(QtWidgets.QMainWindow):
     def paint(self) -> None:
         result = self.map
 
-        if self.grid_view_action.isChecked() or self.line_view_action.isChecked():
+        if self.grid_view_action.isChecked() or self.line_view_action.isChecked() \
+                or self.area_view_action.isChecked():
             result = self.join_maps(result, self.grid_map)
 
         if self.label_view_action.isChecked():
@@ -303,7 +309,14 @@ class Main(QtWidgets.QMainWindow):
 
     def repaint_grid(self):
         self.paint_grid(self.grid_view_action.isChecked(),
-                        self.line_view_action.isChecked())
+                        self.line_view_action.isChecked(),
+                        self.area_view_action.isChecked(),
+                        self.world.square_miles)
+        self.paint()
+
+    def repaint_locations(self):
+        # Not fully implemented yet. I should change the importance argument
+        self.paint_labels(self.locations, 3)
         self.paint()
 
     def repaint_world(self):
@@ -324,6 +337,7 @@ class Main(QtWidgets.QMainWindow):
     def finish_map_generation(self):
         self.world.create_land()
         self.world.find_boundaries(self.world.square_miles)
+        self.world.update_coastlines(self.world.square_miles)
         self.new_map_menu.close()
         self.new_map_menu = None
         self.paint_world(self.world.square_miles,
@@ -379,22 +393,33 @@ class Main(QtWidgets.QMainWindow):
     def add_area_type(self):
         """Creates land using selected area type and sea margin.
         Existing land is retained"""
-        type = c.get_type_value(self.area_options.type.currentText())
+        type = self.area_options.type.currentIndex()
         self.selected_area.sea_margin = self.area_options.sea_margin.value()
         self.selected_area.type = type
         self.selected_area.create_land()
         # self.world.update_regions_from_subregions()
+        self.world.update_coastlines(self.world.square_miles)
         self.repaint_world()
 
     def set_area_type(self):
         """Creates land using selected area type and sea margin.
         Existing land is deleted"""
-        type = c.get_type_value(self.area_options.type.currentText())
+        type = self.area_options.type.currentIndex()
         self.selected_area.sea_margin = self.area_options.sea_margin.value()
         self.selected_area.type = type
         self.selected_area.sink()
         self.selected_area.create_land()
         # self.world.update_regions_from_subregions()
+        self.world.update_coastlines(self.world.square_miles)
+        self.repaint_world()
+
+    def add_coastal_landscape(self):
+        type = self.area_options.type.currentIndex()
+        margin = self.area_options.sea_margin.value()
+        rate = self.area_options.coastal_rate.value()
+        self.selected_area.create_coastal_landscape(type, margin, rate)
+        # self.world.update_regions_from_subregions()
+        self.world.update_coastlines(self.world.square_miles)
         self.repaint_world()
 
     def create_mountains_on_land(self):
