@@ -68,6 +68,10 @@ class World():
             if self.expand_areas():
                 break
 
+    def get_area(self, id: int) -> None:
+        """Returns an area"""
+        return self.areas[id]
+
     def create_land(self) -> None:
         """Creates land and water on all areas"""
         for area in self.areas:

@@ -42,13 +42,34 @@ def get_color(terrain: int) -> QColor:
     return COLORS[terrain]
 
 
-def mix_colors(color_1: QColor, color_2: QColor) -> QColor:
-    if color_1 == color_2:
-        return color_1
+def get_type(type: int) -> str:
+    """Translates an integer constant into a string type"""
+    type_names = {0: "north", 1: "northeast", 2: "east", 3: "southeast",
+                  4: "south", 5: "southwest", 6: "west", 7: "northwest",
+                  8: "center", 9: "land", 10: "water", 11: "mountain"}
+    return type_names[type]
+
+
+def get_type_value(type: str) -> int:
+    """Translates a string type into an integer constant"""
+    type_values = {"north": 0, "northeast": 1, "east": 2, "southeast": 3,
+                   "south": 4, "southwest": 5, "west": 6, "northwest": 7,
+                   "center": 8, "land": 9, "water": 10, "mountain": 11}
+    return type_values[type.lower()]
+
+
+def is_terrain(type: int, category: int):
+    """Returns true if type belongs to the given terrain category"""
+    if type == category:
+        return True
+    elif category == LAND:
+        return type in (MOUNTAIN, CLIFFS, SHORE)
+    elif category == WATER:
+        return type in (SHALLOWS, DEPTHS)
+    elif category == FLATLAND:
+        return type in (LAND, SHORE)
     else:
-        return QColor((color_1.red() + color_2.red()) // 2,
-                      (color_1.green() + color_2.green()) // 2,
-                      (color_1.blue() + color_2.blue()) // 2)
+        return False
 
 
 def get_next_coordinates(x: int, y: int, dir: int) -> tuple[int]:

@@ -1,11 +1,14 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QEvent
 from map_locations import MapLocations
 from map_label import MapLabel
+from area import Area
 from world import World
 from new_map_menu import NewMapMenu
+from area_options import AreaOptions
 from grid import Grid
+from cell import Cell
 import constants as c
 
 
@@ -42,8 +45,15 @@ class Main(QtWidgets.QMainWindow):
 
         self.world: World = World(Main.LENGTH_DIVISION)
         self.new_map_menu: NewMapMenu = None
+        self.zoom_level: int = 1
         self.timer: self.timer = QTimer()
 
+        self.selected_area: Area = None
+        self.selected_region: Cell = None
+        self.selected_mile: Cell = None
+        self.selected_kilometer: Cell = None
+
+        # Add some buttons
         self.new_action = QtWidgets.QAction("New map", self)
         self.export_action = QtWidgets.QAction("Export", self)
         self.quit_action = QtWidgets.QAction("Quit", self)
@@ -51,6 +61,11 @@ class Main(QtWidgets.QMainWindow):
         self.line_view_action = QtWidgets.QAction("View lines", self)
         self.label_view_action = QtWidgets.QAction("View locations", self)
         self.area_view_action = QtWidgets.QAction("View areas", self)
+        self.area_action = QtWidgets.QAction("Area tools", self)
+        self.boundary_action = QtWidgets.QAction("Boundary tools", self)
+        self.line_action = QtWidgets.QAction("Line tools", self)
+        self.town_action = QtWidgets.QAction("Town tools", self)
+        self.label_action = QtWidgets.QAction("Label tools", self)
         self._create_actions()
 
         self.file_menu = QtWidgets.QMenu("File", self)
@@ -59,12 +74,14 @@ class Main(QtWidgets.QMainWindow):
 
         self.left_tool_bar = QtWidgets.QToolBar("Tools", self)
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.left_tool_bar)
+        self._create_toolbar()
 
+        # Create layout
         self.layout = QtWidgets.QHBoxLayout()
-        self.left_layout = QtWidgets.QVBoxLayout()
         self.center_layout = QtWidgets.QVBoxLayout()
         self.right_layout = QtWidgets.QVBoxLayout()
 
+        # Create the map, occupying the center layout
         self.map_screen = QtWidgets.QLabel()
         self.map_screen.installEventFilter(self)
 
@@ -79,10 +96,18 @@ class Main(QtWidgets.QMainWindow):
         self.map_screen.setPixmap(self.map)
         self.center_layout.addWidget(self.map_screen)
 
-        self.layout.addLayout(self.left_layout)
+        # Create tools, occupying the right layout
+        self.area_options = AreaOptions(self)
+        self.right_layout.addWidget(self.area_options)
+        self.area_options.hide()
+
+        self.current_tool = self.area_options
+
+        # Finish setup
         self.layout.addLayout(self.center_layout)
         self.layout.addLayout(self.right_layout)
 
+        # Don't mind this, just testing
         self.locations = MapLocations()
         self.locations.add_location(MapLabel(50, 50, "Sometown", 3, "Town"))
         self.locations.add_location(
@@ -141,6 +166,19 @@ class Main(QtWidgets.QMainWindow):
         self.area_view_action.setChecked(True)
         self.area_view_action.triggered.connect(self.repaint_world)
 
+        self.area_action.triggered.connect(self.open_area_options)
+        # self.boundary_action
+        # self.line_action
+        # self.town_action
+        # self.label_action
+
+    def _create_toolbar(self) -> None:
+        self.left_tool_bar.addAction(self.area_action)
+        self.left_tool_bar.addAction(self.line_action)
+        self.left_tool_bar.addAction(self.town_action)
+        self.left_tool_bar.addAction(self.label_action)
+
+    # Some graphics. This one is mainly for testing
     def paint_expansion(self) -> None:
         """Paints areas. Unclaimed cells are painted black"""
         painter = QtGui.QPainter(self.map_screen.pixmap())
@@ -185,22 +223,6 @@ class Main(QtWidgets.QMainWindow):
         painter.end()
         self.map = pixmap.scaled(Main.MAP_LENGTH, Main.MAP_HEIGHT,
                                  transformMode=Qt.TransformationMode.SmoothTransformation)
-
-    def bilinear_x_paint(self, grid: Grid):
-        painter = QtGui.QPainter(self.map)
-        pen = QtGui.QPen()
-        pen.setWidth(1)
-
-        for y in range(grid.height):
-            cell = grid.get(0, y)
-
-            for x in range(1, grid.length):
-                previous = cell
-                cell = grid.get(x, y)
-                pen.setColor(c.mix_colors(cell.terrain, previous.terrain))
-                painter.setPen(pen)
-                painter.drawPoint(cell.x * 2 + 1, cell.y * 2)
-        painter.end()
 
     def paint_grid(self, draw_grid: bool = True, draw_lines: bool = True) -> None:
         """Draws a grid"""
@@ -289,6 +311,7 @@ class Main(QtWidgets.QMainWindow):
                          draw_areas=self.area_view_action.isChecked())
         self.paint()
 
+    # Menu bar commands
     def export(self):
         name = QtWidgets.QFileDialog.getSaveFileName(self, caption="Save image",
                                                      filter=".png", initialFilter=".png")
@@ -337,6 +360,119 @@ class Main(QtWidgets.QMainWindow):
         else:
             self.world.build_areas()
             self.finish_map_generation()
+
+    # Show map edit tools
+    def open_area_options(self):
+        self.current_tool.hide()
+        self.area_options.enable_buttons(False)
+        self.area_options.show()
+        self.current_tool = self.area_options
+
+    # def open_boundary_options(self):
+        # self.current_tool.hide()
+        # self.boundary_options.show()
+        # self.boundary_options.generate_button.setEnabled(False)
+        # self.current_tool = self.boundary_options
+
+    # Area tool commands
+
+    def add_area_type(self):
+        """Creates land using selected area type and sea margin.
+        Existing land is retained"""
+        type = c.get_type_value(self.area_options.type.currentText())
+        self.selected_area.sea_margin = self.area_options.sea_margin.value()
+        self.selected_area.type = type
+        self.selected_area.create_land()
+        # self.world.update_regions_from_subregions()
+        self.repaint_world()
+
+    def set_area_type(self):
+        """Creates land using selected area type and sea margin.
+        Existing land is deleted"""
+        type = c.get_type_value(self.area_options.type.currentText())
+        self.selected_area.sea_margin = self.area_options.sea_margin.value()
+        self.selected_area.type = type
+        self.selected_area.sink()
+        self.selected_area.create_land()
+        # self.world.update_regions_from_subregions()
+        self.repaint_world()
+
+    def create_mountains_on_land(self):
+        """Creates mountain ranges on the selected area,
+        where it meets the land of a neighboring area"""
+        cells = self.selected_area.find_border_offset(
+            c.LAND,
+            c.LAND,
+            self.area_options.min_offset.value(),
+            self.area_options.max_offset.value())
+
+        for cell in cells:
+            cell.set_terrain(c.MOUNTAIN)
+        self.repaint_world()
+
+    def create_mountains_by_sea(self):
+        """Creates mountain ranges on the selected area,
+        where it meets the sea of a neighboring area"""
+        cells = self.selected_area.find_border_offset(
+            c.LAND,
+            c.WATER,
+            self.area_options.min_offset.value(),
+            self.area_options.max_offset.value())
+
+        for cell in cells:
+            cell.set_terrain(c.MOUNTAIN)
+        self.repaint_world()
+
+    def erase_mountains(self):
+        """Removes all mountains from the selected plate"""
+        for cell in self.selected_area.claimed_cells:
+            if c.is_terrain(cell.terrain, c.MOUNTAIN):
+                cell.set_terrain(c.LAND)
+        self.repaint_world()
+
+    def eventFilter(self, object, event):
+        """Called on map click. Displays region or subregion information"""
+        if event.type() == QEvent.Type.MouseButtonPress:
+            x = event.x()
+            y = event.y()
+
+            if self.zoom_level == 1:
+                column = x // Main.GRID_SIZE
+                row = y // Main.GRID_SIZE
+                sub_column = x // Main.CELL_SIZE
+                sub_row = y // Main.CELL_SIZE
+
+                self.selected_region = self.world.square_regions.get(
+                    column, row)
+                self.selected_mile = self.world.square_miles.get(
+                    sub_column, sub_row)
+
+                try:
+                    self.selected_area = self.world.get_area(
+                        self.selected_mile.area)
+                except IndexError as e:
+                    pass
+
+                if self.current_tool == self.area_options \
+                        and self.selected_area != None:
+                    self.area_options.type.setCurrentIndex(
+                        self.selected_area.type)
+                    self.area_options.sea_margin.setValue(
+                        self.selected_area.sea_margin)
+                    self.area_options.enable_buttons(True)
+
+                # elif self.current_tool == self.boundary_options:
+                #     self.select_coastline(self.selected_region)
+
+                # elif self.current_tool == self.tool_info:
+                #     if self.tool_info.get_current_tool() == "Open region":
+                #         self.open_region(self.selected_region)
+
+            elif self.zoom_level == 2:
+                # More options to come
+                pass
+
+        return super().eventFilter(object, event)
 
 
 if __name__ == "__main__":
