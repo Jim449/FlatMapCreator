@@ -17,6 +17,9 @@ SHORE = 13
 DEPTHS = 14
 CLIFFS = 15
 FLATLAND = 16
+# No, randomly alternating between this and LAND just looks messy
+# But this lighter hue is a bit superior than the original I think
+LAND_2 = 17
 
 BORDER_COLOR = QColor(120, 90, 90)
 GRID_COLOR = QColor(150, 150, 180)
@@ -24,9 +27,9 @@ LINE_COLOR = QColor(90, 90, 120)
 BLACK = QColor(0, 0, 0)
 EMPTY_COLOR = QColor(0, 0, 0, 0)
 
-COLORS = {WATER: QColor(22, 134, 174), LAND: QColor(189, 171, 123), MOUNTAIN: QColor(118, 108, 93),
+COLORS = {WATER: QColor(22, 134, 174), LAND: QColor(196, 179, 136), MOUNTAIN: QColor(118, 108, 93),
           SHALLOWS: QColor(110, 154, 174), SHORE: QColor(162, 139, 100), DEPTHS: QColor(11, 117, 156),
-          CLIFFS: QColor(144, 128, 100)}
+          CLIFFS: QColor(144, 128, 100), LAND_2: QColor(189, 171, 123)}
 
 AREA = "Area"
 SQUARE_REGION = "Square region"
@@ -37,6 +40,15 @@ SQUARE_KILOMETER = "Square kilometer"
 def get_color(terrain: int) -> QColor:
     """Retreives the color of the given terrain"""
     return COLORS[terrain]
+
+
+def mix_colors(color_1: QColor, color_2: QColor) -> QColor:
+    if color_1 == color_2:
+        return color_1
+    else:
+        return QColor((color_1.red() + color_2.red()) // 2,
+                      (color_1.green() + color_2.green()) // 2,
+                      (color_1.blue() + color_2.blue()) // 2)
 
 
 def get_next_coordinates(x: int, y: int, dir: int) -> tuple[int]:

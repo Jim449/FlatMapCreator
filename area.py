@@ -332,6 +332,30 @@ class Area():
                     cell.set_terrain(c.WATER)
                     self.sea_area += 100
 
+            # TODO Try out a shallows check, just for estetics
+            # It basically paints a shadow of where the land would be
+            # had the sea margin been a little lower
+            # It gives this geometrical feel. Can't say I like it
+            # Maybe if I lower it to just 0.02 less than regular sea margin
+            # Better but perhaps not good enough. Try with a shore
+            # self.sea_margin -= 0.02
+
+            # if self.type in (
+            #         c.CENTER, c.NORTHEAST, c.SOUTHEAST,
+            #         c.SOUTHWEST, c.NORTHWEST):
+            #     self._horizontal_land_scan()
+            #     self._vertical_land_scan()
+            # else:
+            #     self._ascending_land_scan()
+            #     self._descending_land_scan()
+
+            # for cell in self.claimed_cells:
+            #     if cell.terrain == c.LAND:
+            #         continue
+            #     elif (cell.horizontal_land_check and cell.vertical_land_check) \
+            #             or (cell.ascending_land_check and cell.descending_land_check):
+            #         cell.set_terrain(c.SHALLOWS)
+
     def sink(self) -> None:
         """Clears all land from this plate. Clears land and sea area calculations"""
         self.land_area = 0
@@ -386,7 +410,7 @@ class Area():
             previous_circle = current_circle
             current_circle = []
 
-            for area in previous_circle:
+            for cell in previous_circle:
                 for dir in range(8):
                     x, y = c.get_next_coordinates(cell.x, cell.y, dir)
                     try:

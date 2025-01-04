@@ -2,7 +2,11 @@ from cell import Cell
 
 
 class Grid():
+    """Represents a square area"""
+
     def __init__(self, length: int, height: int):
+        """Creates a new grid containing given amount of cells
+        horizontally and vertically"""
         self.content: dict[tuple, Cell] = {}
         self.length = length
         self.height = height
@@ -68,12 +72,14 @@ class Grid():
         return main_terrain
 
     def get_unique_terrain(self) -> list[int]:
+        """Returns a list of all terrain types in this grid"""
         result = set()
 
         for cell in self.content.values():
             result.add(cell.terrain)
 
     def filter_terrain(self, terrain: int) -> list[Cell]:
+        """Returns a list of cells with the given terrain type"""
         result = []
 
         for cell in self.content.values():

@@ -50,6 +50,7 @@ class Main(QtWidgets.QMainWindow):
         self.grid_view_action = QtWidgets.QAction("View grid", self)
         self.line_view_action = QtWidgets.QAction("View lines", self)
         self.label_view_action = QtWidgets.QAction("View locations", self)
+        self.area_view_action = QtWidgets.QAction("View areas", self)
         self._create_actions()
 
         self.file_menu = QtWidgets.QMenu("File", self)
@@ -117,6 +118,7 @@ class Main(QtWidgets.QMainWindow):
         self.view_menu.addAction(self.grid_view_action)
         self.view_menu.addAction(self.line_view_action)
         self.view_menu.addAction(self.label_view_action)
+        self.view_menu.addAction(self.area_view_action)
 
     def _create_actions(self):
         self.new_action.triggered.connect(self.new_map)
@@ -134,6 +136,10 @@ class Main(QtWidgets.QMainWindow):
         self.label_view_action.setCheckable(True)
         self.label_view_action.setChecked(True)
         self.label_view_action.triggered.connect(self.paint)
+
+        self.area_view_action.setCheckable(True)
+        self.area_view_action.setChecked(True)
+        self.area_view_action.triggered.connect(self.repaint_world)
 
     def paint_expansion(self) -> None:
         """Paints areas. Unclaimed cells are painted black"""
@@ -159,37 +165,51 @@ class Main(QtWidgets.QMainWindow):
 
     def paint_world(self, grid: Grid, draw_areas: bool = False) -> None:
         """Paints the terrain in the grid"""
-        painter = QtGui.QPainter(self.map)
+        pixmap = QtGui.QPixmap(grid.length, grid.height)
+        painter = QtGui.QPainter(pixmap)
         pen = QtGui.QPen()
         pen.setWidth(1)
 
         for cell in grid:
             pen.setColor(c.get_color(cell.terrain))
             painter.setPen(pen)
-            painter.drawPoint(cell.x * 2, cell.y * 2)
+            painter.drawPoint(cell.x, cell.y)
 
             if draw_areas:
                 pen.setColor(c.BORDER_COLOR)
                 painter.setPen(pen)
 
                 if cell.east_boundary or cell.south_boundary:
-                    painter.drawPoint(cell.x * 2, cell.y * 2)
+                    painter.drawPoint(cell.x, cell.y)
 
+        painter.end()
+        self.map = pixmap.scaled(Main.MAP_LENGTH, Main.MAP_HEIGHT,
+                                 transformMode=Qt.TransformationMode.SmoothTransformation)
+
+    def bilinear_x_paint(self, grid: Grid):
+        painter = QtGui.QPainter(self.map)
+        pen = QtGui.QPen()
+        pen.setWidth(1)
+
+        for y in range(grid.height):
+            cell = grid.get(0, y)
+
+            for x in range(1, grid.length):
+                previous = cell
+                cell = grid.get(x, y)
+                pen.setColor(c.mix_colors(cell.terrain, previous.terrain))
+                painter.setPen(pen)
+                painter.drawPoint(cell.x * 2 + 1, cell.y * 2)
         painter.end()
 
     def paint_grid(self, draw_grid: bool = True, draw_lines: bool = True) -> None:
         """Draws a grid"""
 
-        # TODO I get both grid and lines even if only draw_lines is True?
-        # I am calling the method with the right arguments
-        # I'm entering the right if-statements
-        # Method is called properly
-        # The bug is not apparent
+        # This works. FillRect won't clear the old lines properly
+        self.grid_map.fill(c.EMPTY_COLOR)
 
         painter = QtGui.QPainter(self.grid_map)
         pen = QtGui.QPen()
-        painter.fillRect(0, 0, Main.MAP_LENGTH,
-                         Main.MAP_HEIGHT, c.EMPTY_COLOR)
 
         if draw_grid:
             pen.setColor(c.GRID_COLOR)
@@ -248,9 +268,6 @@ class Main(QtWidgets.QMainWindow):
         return result
 
     def paint(self) -> None:
-        # Wonder if I'm manipulating the map in a way that saves grids?
-        # That wouldn't explain the inconsistencies
-        # No, join_maps returns a new map
         result = self.map
 
         if self.grid_view_action.isChecked() or self.line_view_action.isChecked():
@@ -267,6 +284,11 @@ class Main(QtWidgets.QMainWindow):
                         self.line_view_action.isChecked())
         self.paint()
 
+    def repaint_world(self):
+        self.paint_world(self.world.square_miles,
+                         draw_areas=self.area_view_action.isChecked())
+        self.paint()
+
     def export(self):
         name = QtWidgets.QFileDialog.getSaveFileName(self, caption="Save image",
                                                      filter=".png", initialFilter=".png")
@@ -281,7 +303,8 @@ class Main(QtWidgets.QMainWindow):
         self.world.find_boundaries(self.world.square_miles)
         self.new_map_menu.close()
         self.new_map_menu = None
-        self.paint_world(self.world.square_miles, draw_areas=True)
+        self.paint_world(self.world.square_miles,
+                         draw_areas=self.area_view_action.isChecked())
         self.paint()
 
     def expand_areas(self):

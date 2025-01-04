@@ -1,4 +1,5 @@
 from grid import Grid
+from cell import Cell
 from area import Area
 from random import randrange
 import constants as c
@@ -72,6 +73,14 @@ class World():
         for area in self.areas:
             area.create_land()
 
+    def create_coastline(self, cell_1: Cell, cell_2: Cell):
+        if cell_1.terrain == cell_2.terrain:
+            return
+        elif cell_1.terrain in (c.WATER, c.SHALLOWS) and cell_2.terrain == c.LAND:
+            cell_1.terrain = c.SHORE
+        elif cell_1.terrain == c.LAND and cell_2.terrain in (c.WATER, c.SHALLOWS):
+            cell_2.terrain = c.SHORE
+
     def find_boundaries(self, grid: Grid):
         for y in range(1, grid.height):
             cell = grid.get(0, y)
@@ -84,6 +93,24 @@ class World():
                     previous.east_boundary = True
                     cell.west_boundary = True
 
+                # Do a coastline check while I'm at it
+                # That should improve the graphics
+                # Not yet. Maybe if I have a better LAND / WATER check
+                # Simply adding shallows doesn't do much
+                # It adds some smoothness but I can do without that
+                # I could try lengthening the shallows by 1
+                # But then I have to consider diagonals as well
+                # What if I do a shallows check similar to the land check
+                # That could be nice...
+                # Adding a shore isn't too bad
+                # It looks a bit thin in some places and edgier in others
+                # It's too thin. It has to occupy 2 cells!
+                # I know one thing which would probably look really nice...
+                # doing a depth search and painting the far inland in a lighter hue
+                # do the same thing for water in order to create long shallows
+                # and some dark depths
+                self.create_coastline(cell, previous)
+
         for x in range(grid.length):
             cell = grid.get(x, 0)
 
@@ -94,3 +121,6 @@ class World():
                 if previous.area != cell.area:
                     previous.south_boundary = True
                     cell.north_boundary = True
+
+                # Another coastline check
+                # self.create_coastline(cell, previous)
