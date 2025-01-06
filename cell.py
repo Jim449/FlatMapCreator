@@ -3,6 +3,9 @@ class Cell():
         self.x: int = x
         self.y: int = y
         self.terrain: int = terrain
+        self.elevation: int = None
+        self.depth: int = None
+        self.mountain_depth: int = None
         self.area: int = -1
         self.active: bool = True
 
@@ -21,10 +24,19 @@ class Cell():
         self.south_boundary: bool = False
         self.west_boundary: bool = False
 
-        self.border_distance: int = -1
-
     def set_terrain(self, terrain: int) -> None:
         self.terrain = terrain
+
+    def set_depth(self, depth: int = None) -> None:
+        self.depth = depth
+
+    def has_depth(self) -> bool:
+        return self.depth != None
+
+    def set_mountain_depth(self, mountain_start: int, mountain_end: int) -> int:
+        forward_depth = 1 + self.depth - mountain_start
+        backward_depth = 1 + mountain_end - self.depth
+        self.mountain_depth = min(forward_depth, backward_depth)
 
     def has_boundary(self) -> bool:
         return (self.north_boundary or self.east_boundary

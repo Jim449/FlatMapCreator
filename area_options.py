@@ -71,9 +71,9 @@ class AreaOptions(QtWidgets.QFrame):
 
         self.min_offset = QtWidgets.QSpinBox()
         self.min_offset.setMinimum(1)
-        self.min_offset.setMaximum(20)
+        self.min_offset.setMaximum(30)
         self.min_offset.setSingleStep(1)
-        self.min_offset.setValue(2)
+        self.min_offset.setValue(3)
         self.layout.addWidget(self.min_offset)
 
         self.max_offset_label = QtWidgets.QLabel(
@@ -82,9 +82,9 @@ class AreaOptions(QtWidgets.QFrame):
 
         self.max_offset = QtWidgets.QSpinBox()
         self.max_offset.setMinimum(1)
-        self.max_offset.setMaximum(20)
+        self.max_offset.setMaximum(30)
         self.max_offset.setSingleStep(1)
-        self.max_offset.setValue(2)
+        self.max_offset.setValue(5)
         self.layout.addWidget(self.max_offset)
 
         self.land_mountain = QtWidgets.QPushButton("Generate by land")

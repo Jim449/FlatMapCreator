@@ -374,6 +374,7 @@ class Area():
                 coastal_cells.append(cell)
 
         amount = int(len(coastal_cells) * water_rate)
+        random.shuffle(coastal_cells)
 
         while amount > 0:
             for cell in coastal_cells:
@@ -408,20 +409,21 @@ class Area():
                     continue
 
                 if neighbor.area != self.id \
-                    and c.is_type(neighbor.terrain, external_terrain) \
+                    and c.is_terrain(neighbor.terrain, external_terrain) \
                         and neighbor not in border:
-                    cell.border_distance = 1
+                    cell.set_depth(1)
                     border.append(cell)
         return border
 
     def find_border_distance(self, external_terrain: int, max_distance: int = 100) -> list[list[Cell]]:
         """Returns a two-dimensional list of cells,
         where list at index i respresents cells with distance i+1
-        to an out-of-area cell with terrain equal to the given external terrain
+        to an out-of-area cell with terrain equal to the given external terrain.
+        Sets the depth value of the cells to equal this distance.
         The algorithm terminates at max distance or when all cells have been found.
         """
         for cell in self.claimed_cells:
-            cell.border_distance = -1
+            cell.set_depth()
 
         circles = []
         current_circle = self.find_border_of_terrain(external_terrain)
@@ -442,8 +444,8 @@ class Area():
                     except KeyError:
                         continue
 
-                    if neighbor.area == self.id and neighbor.border_distance == -1:
-                        neighbor.border_distance = distance
+                    if neighbor.area == self.id and neighbor.has_depth() == False:
+                        neighbor.set_depth(distance)
                         current_circle.append(neighbor)
 
             if len(current_circle) > 0:
@@ -467,7 +469,7 @@ class Area():
         for circle in circles:
             if distance >= min_distance:
                 for cell in circle:
-                    if c.is_type(cell.terrain, internal_terrain):
+                    if c.is_terrain(cell.terrain, internal_terrain):
                         result.append(cell)
             distance += 1
 

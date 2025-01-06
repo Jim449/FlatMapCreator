@@ -197,7 +197,7 @@ class Main(QtWidgets.QMainWindow):
         painter.end()
         self.update()
 
-    def paint_world(self, grid: Grid, draw_areas: bool = False) -> None:
+    def paint_world(self, grid: Grid) -> None:
         """Paints the terrain in the grid"""
         pixmap = QtGui.QPixmap(grid.length, grid.height)
         painter = QtGui.QPainter(pixmap)
@@ -205,16 +205,9 @@ class Main(QtWidgets.QMainWindow):
         pen.setWidth(1)
 
         for cell in grid:
-            pen.setColor(c.get_color(cell.terrain))
+            pen.setColor(c.get_color(cell.terrain, cell.elevation))
             painter.setPen(pen)
             painter.drawPoint(cell.x, cell.y)
-
-            # if draw_areas:
-            #     pen.setColor(c.BORDER_COLOR)
-            #     painter.setPen(pen)
-
-            #     if cell.east_boundary or cell.south_boundary:
-            #         painter.drawPoint(cell.x, cell.y)
 
         painter.end()
         self.map = pixmap.scaled(Main.MAP_LENGTH, Main.MAP_HEIGHT,
@@ -320,8 +313,7 @@ class Main(QtWidgets.QMainWindow):
         self.paint()
 
     def repaint_world(self):
-        self.paint_world(self.world.square_miles,
-                         draw_areas=self.area_view_action.isChecked())
+        self.paint_world(self.world.square_miles)
         self.paint()
 
     # Menu bar commands
@@ -340,8 +332,7 @@ class Main(QtWidgets.QMainWindow):
         self.world.update_coastlines(self.world.square_miles)
         self.new_map_menu.close()
         self.new_map_menu = None
-        self.paint_world(self.world.square_miles,
-                         draw_areas=self.area_view_action.isChecked())
+        self.paint_world(self.world.square_miles)
         self.paint()
 
     def expand_areas(self):
@@ -433,6 +424,10 @@ class Main(QtWidgets.QMainWindow):
 
         for cell in cells:
             cell.set_terrain(c.MOUNTAIN)
+            cell.set_mountain_depth(self.area_options.min_offset.value(),
+                                    self.area_options.max_offset.value())
+            # Try setting elevation and use that to set different colors
+            cell.elevation = cell.mountain_depth
         self.repaint_world()
 
     def create_mountains_by_sea(self):
@@ -446,6 +441,10 @@ class Main(QtWidgets.QMainWindow):
 
         for cell in cells:
             cell.set_terrain(c.MOUNTAIN)
+            cell.set_mountain_depth(self.area_options.min_offset.value(),
+                                    self.area_options.max_offset.value())
+            # Try setting elevation and use that to set different colors
+            cell.elevation = cell.mountain_depth
         self.repaint_world()
 
     def erase_mountains(self):
@@ -453,6 +452,7 @@ class Main(QtWidgets.QMainWindow):
         for cell in self.selected_area.claimed_cells:
             if c.is_terrain(cell.terrain, c.MOUNTAIN):
                 cell.set_terrain(c.LAND)
+                cell.elevation = None
         self.repaint_world()
 
     def eventFilter(self, object, event):

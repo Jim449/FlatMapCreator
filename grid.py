@@ -1,4 +1,5 @@
 from cell import Cell
+from typing import Self
 
 
 class Grid():
@@ -21,6 +22,10 @@ class Grid():
         """Creates a new cell at (x, y)"""
         self.content[(x, y)] = Cell(x, y, terrain)
 
+    def add_cell(self, x: int, y: int, cell: Cell) -> None:
+        """Adds a cell at (x, y)"""
+        self.content[(x, y)] = cell
+
     def get(self, x: int, y: int) -> Cell:
         """Returns the cell at (x, y)
 
@@ -40,15 +45,28 @@ class Grid():
                 result.append(None)
         return result
 
-    def get_square(self, x: int, y: int, offset: int) -> list[Cell]:
-        """Returns 10x10 cells, where the northwest cell has coordinates (x - offset, y - offset).
-        Out-of-bound cells are skipped."""
+    def get_area(self, x: int, y: int, length: int = 10, height: int = 10) -> list[Cell]:
+        """Returns a list of cells, occupying a rectangular area.
+        Out of bound cells are ignored"""
         result = []
 
-        for sub_x in range(x*10 - offset, (x + 1)*10 - offset):
-            for sub_y in range(y*10 - offset, (y + 1)*10 - offset):
+        for sub_x in range(x, x + length):
+            for sub_y in range(y, y + height):
                 try:
                     result.append(self.get(sub_x, sub_y))
+                except KeyError:
+                    pass
+        return result
+
+    def get_subgrid(self, x: int, y: int, length: int, height: int) -> Self:
+        """Creates a new grid, containing a rectangular subset of this grid.
+        Changing cells in the new grid will affect this grid"""
+        result = Grid(length, height)
+
+        for sub_x in range(x, x + length):
+            for sub_y in range(y, y + height):
+                try:
+                    result.add_cell(self.get(sub_x, sub_y))
                 except KeyError:
                     pass
         return result

@@ -80,17 +80,18 @@ class World():
     def create_coastline(self, center: Cell, outskirts: list[Cell]):
         """Changes cell terrain to SHORE if it has LAND terrain
         and at least one surrounding cell has WATER terrain"""
-        if center.terrain == c.SHORE:
-            center.set_terrain(c.LAND)
-        elif center.terrain == c.SHALLOWS:
+        # Skip shore for now. Coastal areas will probably look better in a brighter color
+        # if center.terrain == c.SHORE:
+        #     center.set_terrain(c.LAND)
+        if center.terrain == c.SHALLOWS:
             center.set_terrain(c.WATER)
 
-        if center.terrain == c.LAND:
-            for cell in outskirts:
-                if cell != None and c.is_terrain(cell.terrain, c.WATER):
-                    center.set_terrain(c.SHORE)
-                    return
-        elif center.terrain == c.WATER:
+        # if center.terrain == c.LAND:
+        #     for cell in outskirts:
+        #         if cell != None and c.is_terrain(cell.terrain, c.WATER):
+        #             center.set_terrain(c.SHORE)
+        #             return
+        if center.terrain == c.WATER:
             for cell in outskirts:
                 if cell != None and c.is_terrain(cell.terrain, c.LAND):
                     center.set_terrain(c.SHALLOWS)
