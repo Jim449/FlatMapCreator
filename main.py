@@ -36,6 +36,7 @@ class Main(QtWidgets.QMainWindow):
     MAP_HEIGHT = 800
     CELL_SIZE = 2
     GRID_SIZE = 20
+    HEIGHTMAP_SIZE = 16
     LENGTH_DIVISION = 40
     HEIGHT_DIVISION = 40
 
@@ -427,7 +428,9 @@ class Main(QtWidgets.QMainWindow):
             cell.set_mountain_depth(self.area_options.min_offset.value(),
                                     self.area_options.max_offset.value())
             # Try setting elevation and use that to set different colors
-            cell.elevation = cell.mountain_depth
+            # cell.elevation = cell.mountain_depth
+        # Do a heightmap instead
+        self.world.create_heightmaps(cells)
         self.repaint_world()
 
     def create_mountains_by_sea(self):
@@ -444,7 +447,9 @@ class Main(QtWidgets.QMainWindow):
             cell.set_mountain_depth(self.area_options.min_offset.value(),
                                     self.area_options.max_offset.value())
             # Try setting elevation and use that to set different colors
-            cell.elevation = cell.mountain_depth
+            # cell.elevation = cell.mountain_depth
+        # Do a heightmap instead
+        self.world.create_heightmaps(cells)
         self.repaint_world()
 
     def erase_mountains(self):
@@ -466,6 +471,9 @@ class Main(QtWidgets.QMainWindow):
                 row = y // Main.GRID_SIZE
                 sub_column = x // Main.CELL_SIZE
                 sub_row = y // Main.CELL_SIZE
+                # I may need these coordinates in order to do the heightmap stuff
+                heightmap_column = x // Main.HEIGHTMAP_SIZE
+                heightmap_row = y // Main.HEIGHTMAP_SIZE
 
                 self.selected_region = self.world.square_regions.get(
                     column, row)

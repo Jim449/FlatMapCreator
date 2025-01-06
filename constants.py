@@ -61,6 +61,8 @@ def get_color(terrain: int, elevation: int = None) -> QColor:
         return COLORS[terrain]
     elif terrain == MOUNTAIN:
         return MOUNTAIN_COLORS[(elevation - 1)]
+    else:
+        return COLORS[terrain]
 
 
 def get_type(type: int) -> str:

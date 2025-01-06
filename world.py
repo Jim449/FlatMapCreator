@@ -1,7 +1,8 @@
 from grid import Grid
 from cell import Cell
 from area import Area
-from random import randrange
+from heightmap import Heightmap
+from random import randrange, shuffle
 import constants as c
 
 
@@ -135,3 +136,22 @@ class World():
                 else:
                     previous.south_boundary = False
                     cell.north_boundary = False
+
+    def _find_heightmap_coordinates(self, cells: list[Cell]) -> set[tuple[int]]:
+        starting_points = set()
+
+        for cell in cells:
+            starting_points.add((cell.x - cell.x % 8, cell.y - cell.y % 8))
+        return starting_points
+
+    def create_heightmaps(self, cells: list[Cell]) -> None:
+        """Generates heightmap on areas of 8x8 square miles,
+        so that all the given mountainous cells are covered.
+        The resulting heightmaps will be 9x9 square miles,
+        overlapping neighboring cells slightly"""
+        starting_points = self._find_heightmap_coordinates(cells)
+        coordinates = list(starting_points)
+        shuffle(coordinates)
+
+        for x, y in coordinates:
+            Heightmap(self.square_miles, x, y)
