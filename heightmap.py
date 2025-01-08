@@ -5,57 +5,72 @@ import constants as c
 
 
 class Heightmap():
-    def __init__(self, grid: Grid, start_x: int, start_y: int):
+    def __init__(self, grid: Grid, start_x: int, start_y: int,
+                 min_random: int = -1, max_random: int = 3):
         """Generates a heightmap on an area of size 9x9.
-        Uses the diamond square algorithm"""
+        Uses the diamond square algorithm.
+        Heightmaps should be applied on steps of 8 cells.
+        This will cause heightmaps to slightly overlap.
+        The heightmap doesn't have to be entirely within grid bounds.
+        Non-mountainous cells will get minimum elevation.
+        A cell will only be given a new elevation if it's current elevation is None. 
+        """
+        self._generate_heights(grid, start_x, start_y,
+                               3, min_random, max_random)
 
-        self._generate_heights(grid, start_x, start_y, 3)
-
-        # I thought about generating a heightmap of size 11x11
-        # but that won't go as smoothly
-        # for step in range(0, 7, 2):
-        #     self._generate_heights(grid, start_x + 8, start_y + step, 1)
-        #     self._generate_heights(grid, start_x + step, start_y + 8, 1)
-
-        # self._generate_heights(grid, start_x + 8, start_y + 8, 1)
-
-        # for y in range(9):
-        #     print()
-        #     for x in range(9):
-        #         print(grid.get(x, y).elevation, end=" ")
-        # print()
-        # print()
-
-        # It's all None!
-        # Crush that bug!
-
-    def _randomize_elevation(self, grid: Grid, x: int, y: int, maximum: int = 1) -> None:
-        # Sets a random elevation
-        # If the cell is not mountainous, it should have elevation 0
-        # If it is mountainous, I can set a higher elevation
-        # Maybe I should account for depth
-        # Setting a high elevation on a cell close to the mountain edge
-        # may lead to problems
-        # On the other hand, it could force the creation
-        # of more interesting mountain borders
+    def _randomize_elevation(self, grid: Grid, x: int, y: int) -> None:
+        """Generates a random starting elevation for a cell.
+        The value is chosen from 0 to twice the mountain depth.
+        If elevation is not None, the cell retains its current elevation."""
         try:
             cell = grid.get(x, y)
+
             if cell.elevation == None and c.is_terrain(cell.terrain, c.MOUNTAIN):
-                cell.elevation = random.randrange(1, maximum + 1)
+                cell.elevation = random.randrange(
+                    0, 1 + cell.mountain_depth * 2)
             elif cell.elevation == None:
                 cell.elevation = 0
         except KeyError as e:
             pass
 
+    def _set_flatlands(self, grid: Grid, x: int, y: int) -> None:
+        """If the cell is not mountainous, its elevation is set to 0
+        and will not change."""
+        try:
+            cell = grid.get(x, y)
+
+            if c.is_terrain(cell.terrain, c.MOUNTAIN) == False:
+                cell.elevation = 0
+        except KeyError:
+            pass
+
+    def _set_flat_edges(self, grid: Grid, start_x: int, start_y: int, size: int) -> None:
+        """Checks the edges of the heightmap for any non-mountainous cells.
+        Sets the elevation of those cells to 0."""
+        for x in range(start_x, start_x + size):
+            self._set_flatlands(grid, x, start_y)
+            self._set_flatlands(grid, x, start_y + size - 1)
+
+        for y in range(start_y + 1, start_y + size - 1):
+            self._set_flatlands(grid, start_x, y)
+            self._set_flatlands(grid, start_x + size - 1, y)
+
     def _set_elevation(self, cell: Cell, elevation: int) -> None:
+        """Sets elevation of a cell. Only applies if the cells elevation is None.
+        Changes cell terrain as needed"""
         if cell.elevation == None:
+            cell.elevation = elevation
+
             if elevation > 0:
                 cell.set_terrain(c.MOUNTAIN)
-                cell.elevation = elevation
-            elif elevation == 0 and c.is_terrain(cell.terrain, c.MOUNTAIN):
+            elif elevation < 0:
+                cell.set_terrain(c.WATER)
+            elif c.is_terrain(cell.terrain, c.MOUNTAIN):
                 cell.set_terrain(c.LAND)
 
     def _get_elevation(self, grid: Grid, x: int, y: int) -> int:
+        """Returns the elevation of a cell. Returns 0 if elevation is None
+        or if there's no cell at the coordinate"""
         try:
             cell = grid.get(x, y)
             if cell.elevation == None:
@@ -66,8 +81,12 @@ class Heightmap():
             pass
             return 0
 
+    def _get_random(self, min_random: float, max_random: float) -> float:
+        """Returns a random value from min_random to max_random"""
+        return min_random + random.random() * (max_random - min_random)
+
     def _diamond_step(self, grid: Grid, start_x: int, start_y: int, size: int,
-                      step: int, random_scale: float) -> None:
+                      step: int, min_random: float, max_random: float) -> None:
         half = step // 2
 
         for x in range(start_x + half, start_x + size, step):
@@ -83,21 +102,16 @@ class Heightmap():
                 northwest = self._get_elevation(grid, x - half, y - half)
                 value = (northeast + southeast + southwest + northwest) / 4
 
-                # If it's not a mountain, I want to limit the size
-                # Hopefully, removing the random addition will do that
                 if cell.terrain == c.MOUNTAIN:
-                    result = round(value + random.random() * random_scale)
-                    # try maximizing
-                    # result = round(value + random_scale)
+                    result = round(
+                        value + self._get_random(min_random, max_random))
                 else:
                     result = round(value)
 
                 self._set_elevation(cell, result)
-                # print(f"Diamond step on ({x}, {y}) yielding average {
-                #       value} and elevation {result}")
 
     def _square_step(self, grid: Grid, start_x: int, start_y: int, size: int,
-                     step: int, random_scale: float) -> None:
+                     step: int, min_random: float, max_random: float) -> None:
         half = step // 2
 
         for x in range(start_x, start_x + size, half):
@@ -114,36 +128,34 @@ class Heightmap():
                 value = (north + east + south + west) / 4
 
                 if cell.terrain == c.MOUNTAIN:
-                    result = round(value + random.random() * random_scale)
-                    # try maximizing
-                    # result = round(value + random_scale)
+                    result = round(
+                        value + self._get_random(min_random, max_random))
                 else:
                     result = round(value)
-                # print(f"Square step on ({x}, {y}) yielding average {
-                #       value} and elevation {result}")
                 self._set_elevation(cell, result)
 
     def _generate_heights(self, grid: Grid, start_x: int, start_y: int,
-                          exponent: int) -> None:
+                          exponent: int, min_random: int, max_random) -> None:
         """Generates a heightmap on an area of size 2^exponent + 1.
         Uses the diamond square algorithm"""
         size = 2 ** exponent + 1
 
-        self._randomize_elevation(grid, start_x, start_y, 1)
-        self._randomize_elevation(grid, start_x + size - 1, start_y, 1)
-        self._randomize_elevation(grid, start_x, start_y + size - 1, 1)
+        self._set_flat_edges(grid, start_x, start_y, size)
+        self._randomize_elevation(grid, start_x, start_y)
+        self._randomize_elevation(grid, start_x + size - 1, start_y)
+        self._randomize_elevation(grid, start_x, start_y + size - 1)
         self._randomize_elevation(grid, start_x + size - 1,
-                                  start_y + size - 1, 1)
+                                  start_y + size - 1)
 
         step = 2 ** exponent
-        random_scale = 3
 
         while (step > 1):
             self._diamond_step(grid, start_x, start_y,
-                               size, step, random_scale)
+                               size, step, min_random, max_random)
             self._square_step(grid, start_x, start_y,
-                              size, step, random_scale)
-            random_scale = random_scale / 2
+                              size, step, min_random, max_random)
+            min_random = min_random / 2
+            max_random = max_random / 2
             step = step // 2
 
 
@@ -153,19 +165,15 @@ if __name__ == "__main__":
 
     for cell in grid:
         cell.set_terrain(c.MOUNTAIN)
+        cell.mountain_depth = 1
 
-    # Try non-mountainous terrain to the west
-    # Can I get a slope?
-    # for y in range(8):
-    #     grid.get(0, y).terrain = c.LAND
+    for x in range(9):
+        grid.get(x, 0).set_terrain(c.LAND)
+        grid.get(x, 0).mountain_depth = 0
+        grid.get(x, 1).set_terrain(c.LAND)
+        grid.get(x, 1).mountain_depth = 0
 
-    # Set elevation in the corners
-    grid.get(0, 0).elevation = 1
-    grid.get(8, 0).elevation = 1
-    grid.get(0, 8).elevation = 1
-    grid.get(8, 8).elevation = 1
-
-    heightmap: Heightmap = Heightmap(grid, 0, 0)
+    heightmap: Heightmap = Heightmap(grid, 0, 0, -1, 3)
 
     for y in range(9):
         print()

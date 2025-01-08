@@ -11,6 +11,7 @@ class World():
         self.square_regions: Grid = Grid(regions, regions)
         self.square_miles: Grid = Grid(regions * 10, regions * 10)
         self.square_kilometers: Grid = None
+        self.zoomed_square_miles: Grid = None
         self.areas: list[Area] = []
         self.regions = regions
         self.fixed_growth = False
@@ -137,21 +138,70 @@ class World():
                     previous.south_boundary = False
                     cell.north_boundary = False
 
-    def _find_heightmap_coordinates(self, cells: list[Cell]) -> set[tuple[int]]:
-        starting_points = set()
+    def _square_mile_to_heightmap(self, value: int, last: bool = False) -> int:
+        if last:
+            value = value * 10 + 9
+        else:
+            value = value * 10
+        return value - value % 8
 
-        for cell in cells:
-            starting_points.add((cell.x - cell.x % 8, cell.y - cell.y % 8))
-        return starting_points
+    def get_heightmap_coordinates(self, square_miles: Grid) -> set[tuple[int]]:
+        """For each mountainous square_mile cell in the given grid,
+        finds starting coordinates for heightmaps.
+        Together, those heightmaps will cover all of the square mile cells.
+        Returns a set of coordinates."""
+        result = set()
 
-    def create_heightmaps(self, cells: list[Cell]) -> None:
+        for cell in square_miles:
+            # Translate from 10-cell grid to 8-cell grid
+            # A square of 10x10 may overlap at most 9 squares of 8x8
+            # But as long as both grids start from 0,
+            # there are only 4 possible overlaps
+
+            # Multiply by 10 to translate from mile to km
+            # Add 9 to get final cell
+            # Divide with 8 to get the 8-grid
+            # But heightmap actually takes km values
+            # So I'd have to multiply by 8 again
+            # It's faster to subtract the remainder?
+            # Use a dedicated function after all
+            if c.is_terrain(cell.terrain, c.MOUNTAIN):
+                result.add((self._square_mile_to_heightmap(cell.x),
+                            self._square_mile_to_heightmap(cell.y)))
+                result.add((self._square_mile_to_heightmap(cell.x, True),
+                            self._square_mile_to_heightmap(cell.y)))
+                result.add((self._square_mile_to_heightmap(cell.x),
+                            self._square_mile_to_heightmap(cell.y, True)))
+                result.add((self._square_mile_to_heightmap(cell.x, True),
+                            self._square_mile_to_heightmap(cell.y, True)))
+        return result
+
+    def create_heightmaps(self, square_miles: Grid) -> None:
         """Generates heightmap on areas of 8x8 square miles,
         so that all the given mountainous cells are covered.
         The resulting heightmaps will be 9x9 square miles,
         overlapping neighboring cells slightly"""
-        starting_points = self._find_heightmap_coordinates(cells)
+        starting_points = self.get_heightmap_coordinates(square_miles)
         coordinates = list(starting_points)
         shuffle(coordinates)
 
         for x, y in coordinates:
-            Heightmap(self.square_miles, x, y)
+            Heightmap(self.square_kilometers, x, y)
+
+    def zoom_in(self, start_x: int, start_y: int) -> Grid:
+        """Generates a square kilometer grid representing
+        a zoomed-in area on the square mile grid"""
+
+        self.square_kilometers = Grid(400, 400, start_x * 100, start_y * 100)
+        self.zoomed_square_miles = self.square_miles.get_subgrid(
+            start_x * 10, start_y * 10, 40, 40)
+
+        for mile_cell in self.zoomed_square_miles:
+            mile_x = mile_cell.x * 10
+            mile_y = mile_cell.y * 10
+
+            for kilometer_cell in self.square_kilometers.get_area(mile_x, mile_y, 10, 10):
+                kilometer_cell.inherit(mile_cell)
+
+        self.create_heightmaps(self.zoomed_square_miles)
+        return self.square_kilometers

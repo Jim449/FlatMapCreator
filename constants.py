@@ -31,18 +31,28 @@ COLORS = {WATER: QColor(22, 134, 174), LAND: QColor(196, 179, 136), MOUNTAIN: QC
           SHALLOWS: QColor(110, 154, 174), SHORE: QColor(162, 139, 100), DEPTHS: QColor(11, 117, 156),
           CLIFFS: QColor(144, 128, 100), LAND_2: QColor(189, 171, 123)}
 
-MOUNTAIN_COLORS = [QColor(155, 135, 95), QColor(160, 141, 103), QColor(165, 147, 111),
-                   QColor(170, 153, 119), QColor(
-                       175, 159, 127), QColor(180, 165, 135),
-                   QColor(185, 171, 143), QColor(
-                       190, 177, 151), QColor(195, 183, 159),
-                   QColor(200, 189, 167), QColor(
-                       205, 195, 175), QColor(210, 201, 183),
-                   QColor(215, 207, 191), QColor(
-                       220, 213, 199), QColor(225, 219, 207),
-                   QColor(230, 225, 215), QColor(
-                       235, 231, 223), QColor(240, 237, 231),
-                   QColor(245, 243, 239), QColor(250, 249, 247), QColor(255, 255, 255)]
+MOUNTAIN_COLORS = [QColor(180, 150, 115), QColor(160, 120, 90),
+                   QColor(140, 90, 65), QColor(120, 60, 40),
+                   QColor(125, 80, 70), QColor(130, 100, 100),
+                   QColor(135, 120, 130), QColor(140, 150, 150),
+                   QColor(150, 160, 160), QColor(160, 170, 170),
+                   QColor(170, 180, 180), QColor(180, 190, 190),
+                   QColor(190, 200, 200), QColor(200, 210, 210),
+                   QColor(210, 220, 220), QColor(220, 230, 230)]
+
+# MOUNTAIN_COLORS = [QColor(155, 135, 95), QColor(160, 141, 103), QColor(165, 147, 111),
+#                    QColor(170, 153, 119), QColor(
+#                        175, 159, 127), QColor(180, 165, 135),
+#                    QColor(185, 171, 143), QColor(
+#                        190, 177, 151), QColor(195, 183, 159),
+#                    QColor(200, 189, 167), QColor(
+#                        205, 195, 175), QColor(210, 201, 183),
+#                    QColor(215, 207, 191), QColor(
+#                        220, 213, 199), QColor(225, 219, 207),
+#                    QColor(230, 225, 215), QColor(
+#                        235, 231, 223), QColor(240, 237, 231),
+#                    QColor(245, 243, 239), QColor(250, 249, 247), QColor(255, 255, 255)]
+
 # 255 - 100 = 155; 255 - 20*5 = 155
 # 255 - 120 = 135; 255 - 20*6 = 135
 # 255 - 160 = 95; 255 - 20*8 = 95

@@ -47,6 +47,8 @@ class Main(QtWidgets.QMainWindow):
         self.world: World = World(Main.LENGTH_DIVISION)
         self.new_map_menu: NewMapMenu = None
         self.zoom_level: int = 1
+        self.start_x: int = None
+        self.start_y: int = None
         self.timer: self.timer = QTimer()
 
         self.selected_area: Area = None
@@ -67,15 +69,23 @@ class Main(QtWidgets.QMainWindow):
         self.line_action = QtWidgets.QAction("Line tools", self)
         self.town_action = QtWidgets.QAction("Town tools", self)
         self.label_action = QtWidgets.QAction("Label tools", self)
+        self.zoom_in_action = QtWidgets.QAction("Zoom in", self)
+        self.zoom_out_action = QtWidgets.QAction("Zoom out", self)
         self._create_actions()
 
         self.file_menu = QtWidgets.QMenu("File", self)
         self.view_menu = QtWidgets.QMenu("View", self)
         self._create_menu_bar()
 
-        self.left_tool_bar = QtWidgets.QToolBar("Tools", self)
+        self.left_tool_bar: QtWidgets.QToolBar = QtWidgets.QToolBar(
+            "Tools", self)
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.left_tool_bar)
         self._create_toolbar()
+
+        self.status_bar: QtWidgets.QStatusBar = self.statusBar()
+        self.zoom_label: QtWidgets.QLabel = QtWidgets.QLabel(
+            "Regular zoom: 100 km grid")
+        self._create_statusbar()
 
         # Create layout
         self.layout = QtWidgets.QHBoxLayout()
@@ -103,6 +113,7 @@ class Main(QtWidgets.QMainWindow):
         self.area_options.hide()
 
         self.current_tool = self.area_options
+        self.current_action = None
 
         # Finish setup
         self.layout.addLayout(self.center_layout)
@@ -164,6 +175,9 @@ class Main(QtWidgets.QMainWindow):
         self.area_view_action.triggered.connect(self.repaint_grid)
 
         self.area_action.triggered.connect(self.open_area_options)
+
+        self.zoom_in_action.triggered.connect(self.zoom_in_options)
+        self.zoom_out_action.triggered.connect(self.zoom_out_options)
         # self.boundary_action
         # self.line_action
         # self.town_action
@@ -174,6 +188,12 @@ class Main(QtWidgets.QMainWindow):
         self.left_tool_bar.addAction(self.line_action)
         self.left_tool_bar.addAction(self.town_action)
         self.left_tool_bar.addAction(self.label_action)
+        self.left_tool_bar.addAction(self.zoom_in_action)
+        self.left_tool_bar.addAction(self.zoom_out_action)
+        self.zoom_out_action.setEnabled(False)
+
+    def _create_statusbar(self) -> None:
+        self.status_bar.addPermanentWidget(self.zoom_label)
 
     # Some graphics. This one is mainly for testing
     def paint_expansion(self) -> None:
@@ -208,7 +228,7 @@ class Main(QtWidgets.QMainWindow):
         for cell in grid:
             pen.setColor(c.get_color(cell.terrain, cell.elevation))
             painter.setPen(pen)
-            painter.drawPoint(cell.x, cell.y)
+            painter.drawPoint(cell.x - grid.start_x, cell.y - grid.start_y)
 
         painter.end()
         self.map = pixmap.scaled(Main.MAP_LENGTH, Main.MAP_HEIGHT,
@@ -289,6 +309,7 @@ class Main(QtWidgets.QMainWindow):
         return result
 
     def paint(self) -> None:
+        """Draws everything. Called through repaint methods"""
         result = self.map
 
         if self.grid_view_action.isChecked() or self.line_view_action.isChecked() \
@@ -302,10 +323,15 @@ class Main(QtWidgets.QMainWindow):
         self.update()
 
     def repaint_grid(self):
-        self.paint_grid(self.grid_view_action.isChecked(),
-                        self.line_view_action.isChecked(),
-                        self.area_view_action.isChecked(),
-                        self.world.square_miles)
+        """Repaints grid, lines and area lines"""
+        if self.zoom_level == 1:
+            self.paint_grid(self.grid_view_action.isChecked(),
+                            self.line_view_action.isChecked(),
+                            self.area_view_action.isChecked(),
+                            self.world.square_miles)
+        elif self.zoom_level == 2:
+            self.paint_grid(self.grid_view_action.isChecked(),
+                            self.line_view_action.isChecked())
         self.paint()
 
     def repaint_locations(self):
@@ -314,7 +340,27 @@ class Main(QtWidgets.QMainWindow):
         self.paint()
 
     def repaint_world(self):
-        self.paint_world(self.world.square_miles)
+        """Repaints the map"""
+        if self.zoom_level == 1:
+            self.paint_world(self.world.square_miles)
+        elif self.zoom_level == 2:
+            self.paint_world(self.world.square_kilometers)
+        self.paint()
+
+    def repaint_all(self):
+        """Repaints map, grid and labels."""
+        # Doesn't actually repaint labels yet
+        # They're a work in progress
+        if self.zoom_level == 1:
+            self.paint_world(self.world.square_miles)
+            self.paint_grid(self.grid_view_action.isChecked(),
+                            self.line_view_action.isChecked(),
+                            self.area_view_action.isChecked(),
+                            self.world.square_miles)
+        elif self.zoom_level == 2:
+            self.paint_world(self.world.square_kilometers)
+            self.paint_grid(self.grid_view_action.isChecked(),
+                            self.line_view_action.isChecked())
         self.paint()
 
     # Menu bar commands
@@ -373,6 +419,42 @@ class Main(QtWidgets.QMainWindow):
         self.area_options.enable_buttons(False)
         self.area_options.show()
         self.current_tool = self.area_options
+        self.current_action = None
+
+    # Click on zoom in
+    def zoom_in_options(self):
+        self.zoom_label.setText("Select a location to zoom in")
+        self.current_action = self.zoom_in_action
+
+    # Click on zoom out
+    def zoom_out_options(self):
+        self.zoom_label.setText("Click the map to zoom out")
+        self.current_action = self.zoom_out_action
+
+    # Zoom in commands
+    def zoom_in(self, x: int, y: int):
+        self.current_action = None
+        self.status_bar.clearMessage()
+        self.zoom_level = 2
+        self.start_x = max(x - 2, 0)
+        self.start_y = max(y - 2, 0)
+        print(f"Clicked ({x}, {y}), zooming in on ({
+              self.start_x}, {self.start_y})")
+        self.world.zoom_in(self.start_x, self.start_y)
+        self.zoom_label.setText("High zoom: 10 km grid")
+        self.zoom_in_action.setEnabled(False)
+        self.zoom_out_action.setEnabled(True)
+        self.repaint_all()
+
+    # Zoom out commands
+    def zoom_out(self):
+        self.current_action = None
+        self.status_bar.clearMessage()
+        self.zoom_level = 1
+        self.zoom_label.setText("Regular zoom: 100 km grid")
+        self.zoom_in_action.setEnabled(True)
+        self.zoom_out_action.setEnabled(False)
+        self.repaint_all()
 
     # def open_boundary_options(self):
         # self.current_tool.hide()
@@ -425,12 +507,8 @@ class Main(QtWidgets.QMainWindow):
 
         for cell in cells:
             cell.set_terrain(c.MOUNTAIN)
-            cell.set_mountain_depth(self.area_options.min_offset.value(),
-                                    self.area_options.max_offset.value())
-            # Try setting elevation and use that to set different colors
-            # cell.elevation = cell.mountain_depth
-        # Do a heightmap instead
-        self.world.create_heightmaps(cells)
+            cell.calculate_mountain_depth(self.area_options.min_offset.value(),
+                                          self.area_options.max_offset.value())
         self.repaint_world()
 
     def create_mountains_by_sea(self):
@@ -444,12 +522,8 @@ class Main(QtWidgets.QMainWindow):
 
         for cell in cells:
             cell.set_terrain(c.MOUNTAIN)
-            cell.set_mountain_depth(self.area_options.min_offset.value(),
-                                    self.area_options.max_offset.value())
-            # Try setting elevation and use that to set different colors
-            # cell.elevation = cell.mountain_depth
-        # Do a heightmap instead
-        self.world.create_heightmaps(cells)
+            cell.calculate_mountain_depth(self.area_options.min_offset.value(),
+                                          self.area_options.max_offset.value())
         self.repaint_world()
 
     def erase_mountains(self):
@@ -471,14 +545,17 @@ class Main(QtWidgets.QMainWindow):
                 row = y // Main.GRID_SIZE
                 sub_column = x // Main.CELL_SIZE
                 sub_row = y // Main.CELL_SIZE
-                # I may need these coordinates in order to do the heightmap stuff
-                heightmap_column = x // Main.HEIGHTMAP_SIZE
-                heightmap_row = y // Main.HEIGHTMAP_SIZE
+
+                if self.current_action == self.zoom_in_action:
+                    self.zoom_in(column, row)
+                    return super().eventFilter(object, event)
 
                 self.selected_region = self.world.square_regions.get(
                     column, row)
                 self.selected_mile = self.world.square_miles.get(
                     sub_column, sub_row)
+                self.status_bar.showMessage(
+                    f"Region ({self.selected_region.x}, {self.selected_region.y})  Square mile ({self.selected_mile.x}, {self.selected_mile.y}) ")
 
                 try:
                     self.selected_area = self.world.get_area(
@@ -502,8 +579,21 @@ class Main(QtWidgets.QMainWindow):
                 #         self.open_region(self.selected_region)
 
             elif self.zoom_level == 2:
-                # More options to come
-                pass
+                column = 10 * self.start_x + x // Main.GRID_SIZE
+                row = 10 * self.start_y + y // Main.GRID_SIZE
+                sub_column = 100 * self.start_x + x // Main.CELL_SIZE
+                sub_row = 100 * self.start_y + y // Main.CELL_SIZE
+
+                self.selected_mile = self.world.square_miles.get(
+                    column, row)
+                self.selected_kilometer = self.world.square_kilometers.get(
+                    sub_column, sub_row)
+                self.status_bar.showMessage(
+                    f"Square mile ({self.selected_mile.x}, {self.selected_mile.y})  Square kilometer ({self.selected_kilometer.x}, {self.selected_kilometer.y}) ")
+
+                if self.current_action == self.zoom_out_action:
+                    self.zoom_out()
+                    return super().eventFilter(object, event)
 
         return super().eventFilter(object, event)
 

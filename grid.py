@@ -5,17 +5,20 @@ from typing import Self
 class Grid():
     """Represents a square area"""
 
-    def __init__(self, length: int, height: int):
+    def __init__(self, length: int, height: int,
+                 start_x: int = 0, start_y: int = 0):
         """Creates a new grid containing given amount of cells
         horizontally and vertically"""
         self.content: dict[tuple, Cell] = {}
         self.length = length
         self.height = height
+        self.start_x = start_x
+        self.start_y = start_y
         self.ix: int = 0
         self.iy: int = 0
 
-        for x in range(length):
-            for y in range(height):
+        for x in range(start_x, start_x + length):
+            for y in range(start_y, start_y + height):
                 self.add(x, y, 10)
 
     def add(self, x: int, y: int, terrain: int) -> None:
@@ -61,12 +64,12 @@ class Grid():
     def get_subgrid(self, x: int, y: int, length: int, height: int) -> Self:
         """Creates a new grid, containing a rectangular subset of this grid.
         Changing cells in the new grid will affect this grid"""
-        result = Grid(length, height)
+        result = Grid(length, height, x, y)
 
         for sub_x in range(x, x + length):
             for sub_y in range(y, y + height):
                 try:
-                    result.add_cell(self.get(sub_x, sub_y))
+                    result.add_cell(sub_x, sub_y, self.get(sub_x, sub_y))
                 except KeyError:
                     pass
         return result
@@ -105,15 +108,15 @@ class Grid():
                 result.append(cell)
 
     def __iter__(self):
-        self.ix = 0
-        self.iy = 0
+        self.ix = self.start_x
+        self.iy = self.start_y
         return self
 
     def __next__(self) -> Cell:
-        if self.ix == self.length:
-            self.ix = 0
+        if self.ix == self.start_x + self.length:
+            self.ix = self.start_x
 
-            if self.iy == self.height - 1:
+            if self.iy == self.start_y + self.height - 1:
                 raise StopIteration
             else:
                 self.iy += 1
