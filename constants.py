@@ -27,7 +27,7 @@ LINE_COLOR = QColor(90, 90, 120)
 BLACK = QColor(0, 0, 0)
 EMPTY_COLOR = QColor(0, 0, 0, 0)
 
-COLORS = {WATER: QColor(22, 134, 174), LAND: QColor(196, 179, 136), MOUNTAIN: QColor(155, 135, 95),
+COLORS = {WATER: QColor(22, 134, 174), LAND: QColor(196, 179, 136), MOUNTAIN: QColor(180, 150, 115),
           SHALLOWS: QColor(110, 154, 174), SHORE: QColor(162, 139, 100), DEPTHS: QColor(11, 117, 156),
           CLIFFS: QColor(144, 128, 100), LAND_2: QColor(189, 171, 123)}
 

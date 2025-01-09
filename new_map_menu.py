@@ -12,7 +12,7 @@ class NewMapMenu(QtWidgets.QFrame):
         self.layout.setContentsMargins(5, 5, 5, 5)
         self.setLayout(self.layout)
 
-        self.algorithm_label = QtWidgets.QLabel("Region generation algorithm")
+        self.algorithm_label = QtWidgets.QLabel("Area generation algorithm")
         self.layout.addWidget(self.algorithm_label)
 
         self.algorithm = QtWidgets.QComboBox()
@@ -20,7 +20,7 @@ class NewMapMenu(QtWidgets.QFrame):
         self.algorithm.addItem("Fixed growth")
         self.layout.addWidget(self.algorithm)
 
-        self.regions_label = QtWidgets.QLabel("Total amount of regions")
+        self.regions_label = QtWidgets.QLabel("Total amount of areas")
         self.layout.addWidget(self.regions_label)
 
         self.regions_total = QtWidgets.QSpinBox()
@@ -29,7 +29,7 @@ class NewMapMenu(QtWidgets.QFrame):
         self.regions_total.setValue(10)
         self.layout.addWidget(self.regions_total)
 
-        self.land_label = QtWidgets.QLabel("Amount of land-only regions")
+        self.land_label = QtWidgets.QLabel("Amount of land-only areas")
         self.layout.addWidget(self.land_label)
 
         self.land_regions = QtWidgets.QSpinBox()
@@ -38,7 +38,7 @@ class NewMapMenu(QtWidgets.QFrame):
         self.land_regions.setValue(5)
         self.layout.addWidget(self.land_regions)
 
-        self.sea_label = QtWidgets.QLabel("Amount of sea-only regions")
+        self.sea_label = QtWidgets.QLabel("Amount of sea-only areas")
         self.layout.addWidget(self.sea_label)
 
         self.sea_regions = QtWidgets.QSpinBox()
@@ -47,7 +47,7 @@ class NewMapMenu(QtWidgets.QFrame):
         self.sea_regions.setValue(0)
         self.layout.addWidget(self.sea_regions)
 
-        self.margin_label = QtWidgets.QLabel("Sea margin of mixed regions")
+        self.margin_label = QtWidgets.QLabel("Sea margin of mixed areas")
         self.layout.addWidget(self.margin_label)
 
         self.sea_margin = QtWidgets.QDoubleSpinBox()

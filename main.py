@@ -438,8 +438,6 @@ class Main(QtWidgets.QMainWindow):
         self.zoom_level = 2
         self.start_x = max(x - 2, 0)
         self.start_y = max(y - 2, 0)
-        print(f"Clicked ({x}, {y}), zooming in on ({
-              self.start_x}, {self.start_y})")
         self.world.zoom_in(self.start_x, self.start_y)
         self.zoom_label.setText("High zoom: 10 km grid")
         self.zoom_in_action.setEnabled(False)

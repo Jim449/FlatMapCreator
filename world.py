@@ -143,7 +143,8 @@ class World():
             value = value * 10 + 9
         else:
             value = value * 10
-        return value - value % 8
+        # Try using 16 instead of 8. Larger heightmaps might look smoother
+        return value - value % 16
 
     def get_heightmap_coordinates(self, square_miles: Grid) -> set[tuple[int]]:
         """For each mountainous square_mile cell in the given grid,
@@ -157,14 +158,6 @@ class World():
             # A square of 10x10 may overlap at most 9 squares of 8x8
             # But as long as both grids start from 0,
             # there are only 4 possible overlaps
-
-            # Multiply by 10 to translate from mile to km
-            # Add 9 to get final cell
-            # Divide with 8 to get the 8-grid
-            # But heightmap actually takes km values
-            # So I'd have to multiply by 8 again
-            # It's faster to subtract the remainder?
-            # Use a dedicated function after all
             if c.is_terrain(cell.terrain, c.MOUNTAIN):
                 result.add((self._square_mile_to_heightmap(cell.x),
                             self._square_mile_to_heightmap(cell.y)))
@@ -174,6 +167,15 @@ class World():
                             self._square_mile_to_heightmap(cell.y, True)))
                 result.add((self._square_mile_to_heightmap(cell.x, True),
                             self._square_mile_to_heightmap(cell.y, True)))
+
+                # Try creating more heightmaps for smoother transitions
+                # I want to to the northwest, since some heightmaps may end abruptly there
+                result.add((self._square_mile_to_heightmap(cell.x - 1),
+                            self._square_mile_to_heightmap(cell.y)))
+                result.add((self._square_mile_to_heightmap(cell.x),
+                            self._square_mile_to_heightmap(cell.y - 1)))
+                result.add((self._square_mile_to_heightmap(cell.x - 1),
+                            self._square_mile_to_heightmap(cell.y - 1)))
         return result
 
     def create_heightmaps(self, square_miles: Grid) -> None:
@@ -182,11 +184,18 @@ class World():
         The resulting heightmaps will be 9x9 square miles,
         overlapping neighboring cells slightly"""
         starting_points = self.get_heightmap_coordinates(square_miles)
+        heightmaps: list[Heightmap] = []
         coordinates = list(starting_points)
         shuffle(coordinates)
+        finished = False
 
         for x, y in coordinates:
-            Heightmap(self.square_kilometers, x, y)
+            heightmaps.append(Heightmap(self.square_kilometers, x, y,
+                                        min_random=-2, max_random=5, exponent=4))
+
+        while not finished:
+            for heightmap in heightmaps:
+                finished = heightmap.next_iteration()
 
     def zoom_in(self, start_x: int, start_y: int) -> Grid:
         """Generates a square kilometer grid representing

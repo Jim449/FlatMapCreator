@@ -8,7 +8,7 @@ import constants as c
 class Area():
     def __init__(self, id: int, grid: Grid, start_x: int, start_y: int,
                  type: int = c.CENTER, sea_margin: float = 0.25,
-                 growth: int = 4, relative_growth: float = 0.3):
+                 growth: int = 20, relative_growth: float = 0.3):
         self.id: int = id
         self.grid: Grid = grid
         self.start_x: int = start_x
