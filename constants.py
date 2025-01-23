@@ -31,15 +31,28 @@ COLORS = {WATER: QColor(22, 134, 174), LAND: QColor(196, 179, 136), MOUNTAIN: QC
           SHALLOWS: QColor(110, 154, 174), SHORE: QColor(162, 139, 100), DEPTHS: QColor(11, 117, 156),
           CLIFFS: QColor(144, 128, 100), LAND_2: QColor(189, 171, 123)}
 
-MOUNTAIN_COLORS = [QColor(180, 150, 115), QColor(160, 120, 90),
-                   QColor(140, 90, 65), QColor(120, 60, 40),
-                   QColor(125, 80, 70), QColor(130, 100, 100),
-                   QColor(135, 120, 130), QColor(140, 150, 150),
-                   QColor(150, 160, 160), QColor(160, 170, 170),
-                   QColor(170, 180, 180), QColor(180, 190, 190),
-                   QColor(190, 200, 200), QColor(200, 210, 210),
-                   QColor(210, 220, 220), QColor(220, 230, 230)]
+# Plain black to white, 18 colors
+MOUNTAIN_COLORS = [QColor(0, 0, 0), QColor(15, 15, 15),
+                   QColor(30, 30, 30), QColor(45, 45, 45),
+                   QColor(60, 60, 60), QColor(75, 75, 75),
+                   QColor(90, 90, 90), QColor(105, 105, 105),
+                   QColor(120, 120, 120), QColor(135, 135, 135),
+                   QColor(150, 150, 150), QColor(165, 165, 165),
+                   QColor(180, 180, 180), QColor(195, 195, 195),
+                   QColor(210, 210, 210), QColor(225, 225, 225),
+                   QColor(240, 240, 240), QColor(255, 255, 255)]
 
+# Reddish, going into white
+# MOUNTAIN_COLORS = [QColor(180, 150, 115), QColor(160, 120, 90),
+#                    QColor(140, 90, 65), QColor(120, 60, 40),
+#                    QColor(125, 80, 70), QColor(130, 100, 100),
+#                    QColor(135, 120, 130), QColor(140, 150, 150),
+#                    QColor(150, 160, 160), QColor(160, 170, 170),
+#                    QColor(170, 180, 180), QColor(180, 190, 190),
+#                    QColor(190, 200, 200), QColor(200, 210, 210),
+#                    QColor(210, 220, 220), QColor(220, 230, 230)]
+
+# Brownish
 # MOUNTAIN_COLORS = [QColor(155, 135, 95), QColor(160, 141, 103), QColor(165, 147, 111),
 #                    QColor(170, 153, 119), QColor(
 #                        175, 159, 127), QColor(180, 165, 135),
@@ -105,6 +118,16 @@ def is_terrain(type: int, category: int):
         return False
 
 
+def get_terrain_type(terrain: int) -> int:
+    """Translates exact terrain into a terrain cathegory, LAND, MOUNTAIN or WATER"""
+    if terrain in (LAND, SHORE):
+        return LAND
+    elif terrain in (MOUNTAIN, CLIFFS):
+        return MOUNTAIN
+    elif terrain in (WATER, SHALLOWS, DEPTHS):
+        return WATER
+
+
 def get_next_coordinates(x: int, y: int, dir: int) -> tuple[int]:
     """Returns new coordinates (x,y) after travelling once in a direction."""
     nx = x
@@ -125,10 +148,7 @@ def get_next_coordinates(x: int, y: int, dir: int) -> tuple[int]:
 
 def flip_direction(dir: int) -> int:
     """Returns the opposite direction"""
-    dir += 4
-    if dir > 8:
-        dir -= 8
-    return dir
+    return (dir + 4) % 8
 
 
 def angle_direction(dir: int, steps_of_eight: int) -> int:

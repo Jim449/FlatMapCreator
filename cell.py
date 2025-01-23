@@ -1,4 +1,5 @@
 from typing import Self
+import constants as c
 
 
 class Cell():
@@ -73,6 +74,6 @@ class Cell():
 
     def inherit(self, cell: Self) -> None:
         """Sets cell variables based on a another cell"""
-        self.set_terrain(cell.terrain)
+        self.set_terrain(c.get_terrain_type(cell.terrain))
         self.mountain_depth = cell.mountain_depth
         self.area = cell.area

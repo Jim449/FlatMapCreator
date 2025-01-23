@@ -2,6 +2,7 @@ from grid import Grid
 from cell import Cell
 from area import Area
 from heightmap import Heightmap
+from boundary import Boundary
 from random import randrange, shuffle
 import constants as c
 
@@ -178,6 +179,15 @@ class World():
                             self._square_mile_to_heightmap(cell.y - 1)))
         return result
 
+    def _sort_heightmaps(self, heightmaps: list[Heightmap]) -> None:
+        for i in range(len(heightmaps) - 1):
+            for j in range(1, len(heightmaps)):
+                heightmap = heightmaps[i]
+
+                if heightmaps[j].start_y < heightmap.start_y:
+                    heightmaps[i] = heightmaps[j]
+                    heightmaps[j] = heightmap
+
     def create_heightmaps(self, square_miles: Grid) -> None:
         """Generates heightmap on areas of 8x8 square miles,
         so that all the given mountainous cells are covered.
@@ -191,11 +201,17 @@ class World():
 
         for x, y in coordinates:
             heightmaps.append(Heightmap(self.square_kilometers, x, y,
-                                        min_random=-2, max_random=5, exponent=4))
+                                        min_random=-2, max_random=6, exponent=4))
 
         while not finished:
             for heightmap in heightmaps:
                 finished = heightmap.next_iteration()
+
+        # I shouldn't need this. Maybe after I've improved the algorithm
+        # self._sort_heightmaps(heightmaps)
+
+        # for heightmap in heightmaps:
+        #     heightmap.tilt()
 
     def zoom_in(self, start_x: int, start_y: int) -> Grid:
         """Generates a square kilometer grid representing
@@ -212,5 +228,11 @@ class World():
             for kilometer_cell in self.square_kilometers.get_area(mile_x, mile_y, 10, 10):
                 kilometer_cell.inherit(mile_cell)
 
-        self.create_heightmaps(self.zoomed_square_miles)
+        # self.create_heightmaps(self.zoomed_square_miles)
+        boundary = Boundary()
+        boundary.find_from_sqare_miles(self.square_kilometers, self.zoomed_square_miles,
+                                       c.LAND, c.WATER)
+        boundary.set_exterior_terrain(c.SHALLOWS)
+
+        # boundary.wobble(self.square_kilometers, 0.5, 1)
         return self.square_kilometers

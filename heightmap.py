@@ -79,15 +79,28 @@ class Heightmap():
         Changes cell terrain as needed"""
         if cell.elevation == None:
             # Ban negative elevation for now. It creates odd looking lakes
-            cell.elevation = max(elevation, 0)
-            cell.elevation = min(elevation, 16)
+            # cell.elevation = max(elevation, 0)
+            # cell.elevation = min(cell.elevation, 16)
+            # Allow negative elevation again
+            # It might be acceptable now that I've manipulated the weights
+            cell.elevation = min(elevation, 15)
 
-            if cell.elevation > 0:
-                cell.set_terrain(c.MOUNTAIN)
-            elif cell.elevation < 0:
-                cell.set_terrain(c.WATER)
-            elif c.is_terrain(cell.terrain, c.MOUNTAIN):
-                cell.set_terrain(c.LAND)
+    def _get_weight(self, x: int, y: int) -> int:
+        """Returns the weight of a cell. Cells with high weights
+        have greater influence on the elevation of other cells."""
+        # Corner cells will now have doubled weight.
+        # Hopefully, this will solve problems where corner cell elevation
+        # was likely to be different from surrounding elevation
+        # and create smoother transitions.
+        # The middle cell now has doubled weight as well.
+        if (x == self.start_x or x == self.start_x + self.size - 1) and \
+                (y == self.start_y or y == self.start_y + self.size - 1):
+            return 2
+        elif (x == self.start_x + self.size // 2) or \
+                (y == self.start_y + self.size // 2):
+            return 2
+        else:
+            return 1
 
     def _get_elevation(self, grid: Grid, x: int, y: int) -> int:
         """Returns the elevation of a cell. Returns 0 if elevation is None
@@ -117,11 +130,19 @@ class Heightmap():
                 except KeyError as e:
                     continue
 
+                ne_weight = self._get_weight(x + half, y - half)
+                se_weight = self._get_weight(x + half, y + half)
+                sw_weight = self._get_weight(x - half, y + half)
+                nw_weight = self._get_weight(x - half, y - half)
+
                 northeast = self._get_elevation(grid, x + half, y - half)
                 southeast = self._get_elevation(grid, x + half, y + half)
                 southwest = self._get_elevation(grid, x - half, y + half)
                 northwest = self._get_elevation(grid, x - half, y - half)
-                value = (northeast + southeast + southwest + northwest) / 4
+
+                total = ne_weight + se_weight + sw_weight + nw_weight
+                value = (ne_weight * northeast + se_weight * southeast
+                         + sw_weight * southwest + nw_weight * northwest) / total
 
                 if cell.terrain == c.MOUNTAIN:
                     result = value + self._get_random(min_random, max_random)
@@ -141,11 +162,19 @@ class Heightmap():
                 except KeyError as e:
                     continue
 
+                n_weight = self._get_weight(x, y - half)
+                e_weight = self._get_weight(x + half, y)
+                s_weight = self._get_weight(x, y + half)
+                w_weight = self._get_weight(x - half, y)
+
                 north = self._get_elevation(grid, x, y - half)
                 east = self._get_elevation(grid, x + half, y)
                 south = self._get_elevation(grid, x, y + half)
                 west = self._get_elevation(grid, x - half, y)
-                value = (north + east + south + west) / 4
+
+                total = n_weight + e_weight + s_weight + w_weight
+                value = (n_weight * north + e_weight * east
+                         + s_weight * south + w_weight * west) / total
 
                 if cell.terrain == c.MOUNTAIN:
                     result = value + self._get_random(min_random, max_random)
@@ -179,7 +208,9 @@ class Heightmap():
                     cell = self.grid.get(x, y)
                     cell.elevation = round(cell.elevation)
 
-                    if cell.elevation == 0 and c.is_terrain(cell.terrain, c.MOUNTAIN):
+                    if cell.elevation > 0:
+                        cell.set_terrain(c.MOUNTAIN)
+                    elif cell.elevation == 0 and c.is_terrain(cell.terrain, c.MOUNTAIN):
                         cell.set_terrain(c.LAND)
                     elif cell.elevation < 0:
                         cell.set_terrain(c.WATER)
@@ -192,6 +223,9 @@ class Heightmap():
         All heightmaps should be generated to the same level of iteration
         before the next iteration is performed.
         Returns true if heightmap is completed."""
+        if self.step <= 1:
+            return False
+
         self._square_step(self.grid, self.start_x, self.start_y,
                           self.size, self.step, self.min_random, self.max_random)
         self.min_random = self.min_random / 2
@@ -209,52 +243,103 @@ class Heightmap():
             # I could to a neighbor-check to correct isolated elevation
             # It'd take some extra time
             self._round_all()
+            # Try stretching high elevation cells to the north
+            # That's funny. I can't use it here. I'll have to call it from world
+            # in order of northern heightmaps to southern
+            # Some pixels just shoot up. That's no good
+            # self.tilt()
             return True
+
+    def stretch_north(self, x: int, y: int):
+        try:
+            cell = self.grid.get(x, y)
+
+            if cell.elevation <= 1:
+                return
+
+            for z in range(1, cell.elevation):
+                high_cell = self.grid.get(x, y - z)
+                high_cell.set_terrain(c.MOUNTAIN)
+                high_cell.elevation = cell.elevation
+        except KeyError:
+            pass
+
+    def tilt(self):
+        """Stretches cells to the north depending on elevation,
+        in order to create a three-dimensional feel.
+        To account for heightmap overlap, the last cells are not tilted."""
+        for y in range(self.start_y, self.start_y + self.size - 1):
+            for x in range(self.start_x, self.start_x + self.size - 1):
+                self.stretch_north(x, y)
 
 
 # Testing!
 if __name__ == "__main__":
-    grid: Grid = Grid(9, 9)
+    grid: Grid = Grid(17, 17)
 
     for cell in grid:
         cell.set_terrain(c.MOUNTAIN)
         cell.mountain_depth = 1
 
+    grid.get(0, 0).elevation = 0
+    grid.get(16, 0).elevation = 0
+    grid.get(0, 16).elevation = 0
+    grid.get(16, 16).elevation = 0
+
     # for x in range(9):
     #     grid.get(x, 0).set_terrain(c.LAND)
     #     grid.get(x, 0).mountain_depth = 0
 
+    # Given that 1 elevation = 500km and 1 cell = 1000km,
+    # a difference of 2 equals a 45 degree slope
+    # In which case a max_random of 8 would correspond to a 45 degree slope
+    # or 4000 km height increase
+    # Which I consider acceptable
+    # However, I may want to consider 1 elevation = 1000km.
+    # Then those 4000km rises would look better.
+
+    # Values of min random, max random
+    # 0, 2: too smooth, needs to be zoomed out
+    # 0, 8: I never see smooth slopes down to 0
+    # After I added weight to corners, I see I have steep slopes
+    # around the middle, so I may want to increase weight there as well
+    # 0, 4: better, with a few slopes down to 0 but not enough
+    # Smooth slopes overall, maybe a bit too smooth
+    # The middle often sticks out too much
+    # Adding extra weight to the middle helps but it's still not ideal
+    # 0, 6: slopes are decently sharp but not too much so
+    # No slopes down to 0
+    # -1, 3: smooth with low terrain. Many 0 elevations
+    # Changed to allow negatives
+    # -1, 3: similar to before. Negatives very rare
+    # -1, 5: fairly smooth
+    # -2, 4: there are plenty of lakes
+    # While that's nice, it might cause issues at the border
+    # Decent sharpness
+    # -2, 6: fewer lakes, higher peaks. Decent sharpness
+    # Slopes to 0 are fine enough
+    # -2, 5: something like this is fine
+
+    # -2, 4 on map: it's not too bad. Many irregular shapes.
+    # Lakes are few but when they do appear, they're good enough.
+    # Try adding the tilt now.
+    # It I have a large mountain area, it doesn't look good at all.
+    # Try with higher elevation.
+    # -2, 6 on map: nah. I can't expect too much from this algorithm.
+    # With tilt, I get these drawn-out lines.
+    # It should be better to use low randomness and increase color contrast.
+    # Then I might get some decent enough mountains.
+    # I believe -2, 4 is better than -2, 6.
     heightmap: Heightmap = Heightmap(grid, 0, 0,
-                                     min_random=0, max_random=2, exponent=3)
-
-    for y in range(9):
-        print()
-        for x in range(9):
-            print(grid.get(x, y).elevation, end=" ")
-    print()
-    input()
+                                     min_random=-2, max_random=5, exponent=4)
 
     heightmap.next_iteration()
-
-    for y in range(9):
-        print()
-        for x in range(9):
-            print(grid.get(x, y).elevation, end=" ")
-    print()
-    input()
-
+    heightmap.next_iteration()
+    heightmap.next_iteration()
     heightmap.next_iteration()
 
-    for y in range(9):
+    for y in range(heightmap.size):
         print()
-        for x in range(9):
-            print(grid.get(x, y).elevation, end=" ")
-    print()
-
-    heightmap.next_iteration()
-
-    for y in range(9):
-        print()
-        for x in range(9):
-            print(grid.get(x, y).elevation, end=" ")
+        for x in range(heightmap.size):
+            print(f"{grid.get(x, y).elevation:>2}", end=" ")
     print()

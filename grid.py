@@ -1,5 +1,6 @@
 from cell import Cell
 from typing import Self
+import constants as c
 
 
 class Grid():
@@ -48,6 +49,9 @@ class Grid():
                 result.append(None)
         return result
 
+    def get_close_surroundings(self, x: int, y: int) -> list[Cell]:
+        return self.get_all(c.get_close_surroundings(x, y))
+
     def get_area(self, x: int, y: int, length: int = 10, height: int = 10) -> list[Cell]:
         """Returns a list of cells, occupying a rectangular area.
         Out of bound cells are ignored"""
@@ -60,6 +64,41 @@ class Grid():
                 except KeyError:
                     pass
         return result
+
+    def _get_horizontal_edge(self, start_x: int, start_y: int, direction: int,
+                             length: int, height: int) -> list[Cell]:
+        """Returns the horizontal edge on the north or south side of a rectangle"""
+        result = []
+        y = start_y if direction == c.NORTH else start_y + height - 1
+
+        for x in range(start_x, start_x + length):
+            try:
+                result.append(self.get(x, y))
+            except KeyError:
+                pass
+        return result
+
+    def _get_vertical_edge(self, start_x: int, start_y: int, direction: int,
+                           length: int, height: int) -> list[Cell]:
+        """Returns a vertical edge on the west or east side of a rectangle"""
+        result = []
+        x = start_x if direction == c.WEST else start_x + length - 1
+
+        for y in range(start_y, start_y + height):
+            try:
+                result.append(self.get(x, y))
+            except KeyError:
+                pass
+        return result
+
+    def get_edge(self, x: int, y: int, direction: int,
+                 length: int = 10, height: int = 10) -> list[Cell]:
+        """Returns a list of cells, occupying the edge of a rectangular area.
+        Out of bound cells are ignored"""
+        if direction in (c.NORTH, c.SOUTH):
+            return self._get_horizontal_edge(x, y, direction, length, height)
+        elif direction in (c.WEST, c.EAST):
+            return self._get_vertical_edge(x, y, direction, length, height)
 
     def get_subgrid(self, x: int, y: int, length: int, height: int) -> Self:
         """Creates a new grid, containing a rectangular subset of this grid.
@@ -104,8 +143,9 @@ class Grid():
         result = []
 
         for cell in self.content.values():
-            if cell.terrain == terrain:
+            if c.is_terrain(cell.terrain, terrain):
                 result.append(cell)
+        return result
 
     def __iter__(self):
         self.ix = self.start_x
