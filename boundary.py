@@ -1,6 +1,6 @@
 from grid import Grid
 from cell import Cell
-from random import choice
+from random import choice, randrange
 import constants as c
 
 
@@ -72,7 +72,8 @@ class Boundary():
         result = []
 
         while amount > 0:
-            result.append(choice(cells))
+            index = randrange(len(cells))
+            result.append(cells.pop(index))
             amount -= 1
 
         return result
@@ -88,7 +89,7 @@ class Boundary():
         surroundings = grid.get_close_surroundings(cell.x, cell.y)
 
         for neighbor in surroundings:
-            if c.is_terrain(neighbor.terrain, neighboring_terrain):
+            if neighbor != None and c.is_terrain(neighbor.terrain, neighboring_terrain):
                 return False
         return True
 
@@ -100,32 +101,8 @@ class Boundary():
         turned = self.get_sample(self.exterior, quota)
 
         for cell in turned:
-            cell.set_terrain(self.interior)
-            self.exterior.remove(cell)
-            self.interior.append(cell)
-            surroundings = grid.get_close_surroundings(cell.x, cell.y)
-
-            for neighbor in surroundings:
-                if neighbor == None:
-                    continue
-                elif c.is_terrain(neighbor.terrain, self.interior_terrain):
-                    self._add(neighbor, self.interior)
-                elif c.is_terrain(neighbor, self.exterior_terrain):
-                    if self._check_exclusion(grid, neighbor, self.interior_terrain):
-                        self.exterior.remove(neighbor)
-                        self.discovered.remove(neighbor)
-
-    def turn_to_exterior(self, grid: Grid, quota: float):
-        """Selects a sample of cells of the interior terrain
-        and turns them into cells of the exterior terrain,
-        effectively expanding the boundary in a random manner.
-        The boundary is then updated"""
-        turned = self.get_sample(self.interior, quota)
-
-        for cell in turned:
-            cell.set_terrain(self.exterior)
-            self.interior.remove(cell)
-            self.exterior.append(cell)
+            cell.set_terrain(self.interior_terrain)
+            self.interior[0].append(cell)
             surroundings = grid.get_close_surroundings(cell.x, cell.y)
 
             for neighbor in surroundings:
@@ -133,9 +110,31 @@ class Boundary():
                     continue
                 elif c.is_terrain(neighbor.terrain, self.exterior_terrain):
                     self._add(neighbor, self.exterior)
-                elif c.is_terrain(neighbor, self.interior_terrain):
+                elif c.is_terrain(neighbor.terrain, self.interior_terrain):
                     if self._check_exclusion(grid, neighbor, self.exterior_terrain):
-                        self.interior.remove(neighbor)
+                        self.interior[0].remove(neighbor)
+                        self.discovered.remove(neighbor)
+
+    def turn_to_exterior(self, grid: Grid, quota: float):
+        """Selects a sample of cells of the interior terrain
+        and turns them into cells of the exterior terrain,
+        effectively expanding the boundary in a random manner.
+        The boundary is then updated"""
+        turned = self.get_sample(self.interior[0], quota)
+
+        for cell in turned:
+            cell.set_terrain(self.exterior_terrain)
+            self.exterior.append(cell)
+            surroundings = grid.get_close_surroundings(cell.x, cell.y)
+
+            for neighbor in surroundings:
+                if neighbor == None:
+                    continue
+                elif c.is_terrain(neighbor.terrain, self.interior_terrain):
+                    self._add(neighbor, self.interior[0])
+                elif c.is_terrain(neighbor.terrain, self.exterior_terrain):
+                    if self._check_exclusion(grid, neighbor, self.interior_terrain):
+                        self.exterior.remove(neighbor)
                         self.discovered.remove(neighbor)
 
     def wobble(self, grid: Grid, quota: float, repetitions: int) -> None:
@@ -146,7 +145,7 @@ class Boundary():
             quota: percentage 0 to 1, determining amount of cells affected
             repetitions: value over 1, determining how many times the cells are shifted
         """
-        for rep in repetitions:
+        for rep in range(repetitions):
             self.turn_to_interior(grid, quota)
             self.turn_to_exterior(grid, quota)
 

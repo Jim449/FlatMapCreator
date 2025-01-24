@@ -232,7 +232,14 @@ class World():
         boundary = Boundary()
         boundary.find_from_sqare_miles(self.square_kilometers, self.zoomed_square_miles,
                                        c.LAND, c.WATER)
+        # Decent
+        # Wobble that line! Repetitions at 2
+        # Looks blocky but if I overdo it, it gets really blurry
+        # Consider tweaking the algorithm
+        # Try selecting lines of land/water
+        # It might lead to a smoother result
+        # Try making newly turned cells unturnable for a short while
+        # In that case, I'd need to lower quota to less than 0.5
+        boundary.wobble(self.square_kilometers, 0.5, 2)
         boundary.set_exterior_terrain(c.SHALLOWS)
-
-        # boundary.wobble(self.square_kilometers, 0.5, 1)
         return self.square_kilometers

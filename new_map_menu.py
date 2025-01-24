@@ -35,7 +35,7 @@ class NewMapMenu(QtWidgets.QFrame):
         self.land_regions = QtWidgets.QSpinBox()
         self.land_regions.setMinimum(0)
         self.land_regions.setMaximum(15)
-        self.land_regions.setValue(5)
+        self.land_regions.setValue(0)
         self.layout.addWidget(self.land_regions)
 
         self.sea_label = QtWidgets.QLabel("Amount of sea-only areas")
